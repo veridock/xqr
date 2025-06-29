@@ -1,0 +1,781 @@
+#!/usr/bin/env python3
+"""
+Universal File Editor CLI Tool
+Edytor plików SVG/HTML/XML z obsługą XPath i CSS selectors
+Obsługuje tryb CLI oraz serwer HTTP dla zdalnej edycji
+"""
+
+import argparse
+import json
+import os
+import sys
+import xml.etree.ElementTree as ET
+from pathlib import Path
+from typing import Dict, List, Optional, Union
+import re
+from http.server import HTTPServer, BaseHTTPRequestHandler
+from urllib.parse import urlparse, parse_qs
+import urllib.parse
+import logging
+
+try:
+    from lxml import etree, html
+    LXML_AVAILABLE = True
+except ImportError:
+    LXML_AVAILABLE = False
+    print("Warning: lxml not available. Installing: pip install lxml")
+
+try:
+    from bs4 import BeautifulSoup
+    BS4_AVAILABLE = True
+except ImportError:
+    BS4_AVAILABLE = False
+    print("Warning: BeautifulSoup4 not available. Installing: pip install beautifulsoup4")
+
+
+class FileEditor:
+    """Główna klasa do edycji plików XML/HTML/SVG"""
+    
+    def __init__(self, file_path: str):
+        self.file_path = Path(file_path)
+        self.tree = None
+        self.root = None
+        self.file_type = None
+        self.original_content = None
+        self._load_file()
+    
+    def _load_file(self):
+        """Ładuje plik i określa jego typ"""
+        if not self.file_path.exists():
+            raise FileNotFoundError(f"File not found: {self.file_path}")
+        
+        with open(self.file_path, 'r', encoding='utf-8') as f:
+            self.original_content = f.read()
+        
+        # Określ typ pliku
+        extension = self.file_path.suffix.lower()
+        content_lower = self.original_content.lower()
+        
+        if extension == '.svg' or '<svg' in content_lower:
+            self.file_type = 'svg'
+        elif extension in ['.html', '.htm'] or '<!doctype html' in content_lower or '<html' in content_lower:
+            self.file_type = 'html'
+        elif extension == '.xml' or '<?xml' in content_lower:
+            self.file_type = 'xml'
+        else:
+            self.file_type = 'xml'  # domyślnie XML
+        
+        # Parsuj plik
+        if LXML_AVAILABLE:
+            try:
+                if self.file_type == 'html':
+                    self.tree = html.fromstring(self.original_content)
+                else:
+                    self.tree = etree.fromstring(self.original_content.encode('utf-8'))
+                self.root = self.tree
+            except Exception as e:
+                print(f"lxml parsing failed: {e}, trying ElementTree...")
+                self._fallback_parse()
+        else:
+            self._fallback_parse()
+    
+    def _fallback_parse(self):
+        """Fallback parsing using ElementTree"""
+        try:
+            self.tree = ET.fromstring(self.original_content)
+            self.root = self.tree
+        except ET.ParseError as e:
+            raise ValueError(f"Cannot parse file: {e}")
+    
+    def find_by_xpath(self, xpath: str) -> List:
+        """Znajdź elementy używając XPath"""
+        if not LXML_AVAILABLE:
+            raise NotImplementedError("XPath requires lxml library")
+        
+        try:
+            if isinstance(self.tree, etree._Element):
+                return self.tree.xpath(xpath)
+            else:
+                return []
+        except Exception as e:
+            raise ValueError(f"Invalid XPath expression: {e}")
+    
+    def find_by_css(self, css_selector: str) -> List:
+        """Znajdź elementy używając CSS selectors (tylko HTML)"""
+        if not BS4_AVAILABLE:
+            raise NotImplementedError("CSS selectors require beautifulsoup4 library")
+        
+        if self.file_type != 'html':
+            raise ValueError("CSS selectors work only with HTML files")
+        
+        soup = BeautifulSoup(self.original_content, 'html.parser')
+        return soup.select(css_selector)
+    
+    def get_element_text(self, xpath: str) -> str:
+        """Pobierz tekst elementu"""
+        elements = self.find_by_xpath(xpath)
+        if elements:
+            element = elements[0]
+            if hasattr(element, 'text'):
+                return element.text or ""
+            return str(element)
+        return ""
+    
+    def get_element_attribute(self, xpath: str, attr_name: str) -> str:
+        """Pobierz atrybut elementu"""
+        elements = self.find_by_xpath(xpath)
+        if elements:
+            element = elements[0]
+            if hasattr(element, 'get'):
+                return element.get(attr_name, "")
+            elif hasattr(element, 'attrib'):
+                return element.attrib.get(attr_name, "")
+        return ""
+    
+    def set_element_text(self, xpath: str, new_text: str) -> bool:
+        """Ustaw tekst elementu"""
+        elements = self.find_by_xpath(xpath)
+        if elements:
+            element = elements[0]
+            if hasattr(element, 'text'):
+                element.text = new_text
+            return True
+        return False
+    
+    def set_element_attribute(self, xpath: str, attr_name: str, attr_value: str) -> bool:
+        """Ustaw atrybut elementu"""
+        elements = self.find_by_xpath(xpath)
+        if elements:
+            element = elements[0]
+            if hasattr(element, 'set'):
+                element.set(attr_name, attr_value)
+            elif hasattr(element, 'attrib'):
+                element.attrib[attr_name] = attr_value
+            return True
+        return False
+    
+    def add_element(self, parent_xpath: str, tag_name: str, text: str = "", attributes: Dict[str, str] = None) -> bool:
+        """Dodaj nowy element"""
+        parents = self.find_by_xpath(parent_xpath)
+        if parents:
+            parent = parents[0]
+            if LXML_AVAILABLE:
+                new_element = etree.SubElement(parent, tag_name)
+                if text:
+                    new_element.text = text
+                if attributes:
+                    for key, value in attributes.items():
+                        new_element.set(key, value)
+            return True
+        return False
+    
+    def remove_element(self, xpath: str) -> bool:
+        """Usuń element"""
+        elements = self.find_by_xpath(xpath)
+        if elements:
+            element = elements[0]
+            parent = element.getparent()
+            if parent is not None:
+                parent.remove(element)
+                return True
+        return False
+    
+    def list_elements(self, xpath: str = "//*") -> List[Dict]:
+        """Wylistuj elementy z ich ścieżkami"""
+        elements = self.find_by_xpath(xpath)
+        result = []
+        
+        for i, element in enumerate(elements):
+            if LXML_AVAILABLE:
+                element_path = self.tree.getpath(element) if hasattr(self.tree, 'getpath') else f"element[{i}]"
+                element_info = {
+                    'path': element_path,
+                    'tag': element.tag,
+                    'text': (element.text or "").strip(),
+                    'attributes': dict(element.attrib) if hasattr(element, 'attrib') else {}
+                }
+                result.append(element_info)
+        
+        return result
+    
+    def save(self, output_path: str = None) -> bool:
+        """Zapisz zmiany do pliku"""
+        save_path = output_path or str(self.file_path)
+        
+        try:
+            if LXML_AVAILABLE:
+                if self.file_type == 'html':
+                    content = etree.tostring(self.tree, encoding='unicode', method='html', pretty_print=True)
+                else:
+                    content = etree.tostring(self.tree, encoding='unicode', pretty_print=True)
+                    if not content.startswith('<?xml'):
+                        content = '<?xml version="1.0" encoding="UTF-8"?>\n' + content
+            else:
+                content = ET.tostring(self.tree, encoding='unicode')
+            
+            with open(save_path, 'w', encoding='utf-8') as f:
+                f.write(content)
+            return True
+        except Exception as e:
+            print(f"Error saving file: {e}")
+            return False
+    
+    def backup(self) -> str:
+        """Utwórz kopię zapasową"""
+        backup_path = f"{self.file_path}.backup"
+        with open(backup_path, 'w', encoding='utf-8') as f:
+            f.write(self.original_content)
+        return backup_path
+
+
+class FileEditorServer(BaseHTTPRequestHandler):
+    """HTTP Server dla zdalnej edycji plików"""
+    
+    editors: Dict[str, FileEditor] = {}
+    
+    def do_GET(self):
+        """Obsługa żądań GET"""
+        parsed_url = urlparse(self.path)
+        path = parsed_url.path
+        query = parse_qs(parsed_url.query)
+        
+        if path == '/':
+            self._serve_interface()
+        elif path == '/api/files':
+            self._list_files()
+        elif path.startswith('/api/file/'):
+            file_path = path[10:]  # usuń /api/file/
+            self._serve_file_info(file_path)
+        else:
+            self._send_error(404, "Not Found")
+    
+    def do_POST(self):
+        """Obsługa żądań POST"""
+        content_length = int(self.headers['Content-Length'])
+        post_data = self.rfile.read(content_length).decode('utf-8')
+        
+        try:
+            data = json.loads(post_data)
+        except json.JSONDecodeError:
+            self._send_error(400, "Invalid JSON")
+            return
+        
+        parsed_url = urlparse(self.path)
+        path = parsed_url.path
+        
+        if path == '/api/load':
+            self._load_file(data)
+        elif path == '/api/query':
+            self._query_elements(data)
+        elif path == '/api/update':
+            self._update_element(data)
+        elif path == '/api/save':
+            self._save_file(data)
+        else:
+            self._send_error(404, "Not Found")
+    
+    def _serve_interface(self):
+        """Serwuj interfejs webowy"""
+        html = """
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>File Editor Server</title>
+            <style>
+                body { font-family: Arial, sans-serif; margin: 20px; }
+                .container { max-width: 1200px; margin: 0 auto; }
+                .section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
+                input, textarea, select { padding: 8px; margin: 5px; width: 300px; }
+                button { padding: 10px 15px; background: #007cba; color: white; border: none; border-radius: 3px; cursor: pointer; }
+                button:hover { background: #005a87; }
+                .result { background: #f5f5f5; padding: 10px; margin: 10px 0; border-radius: 3px; font-family: monospace; white-space: pre-wrap; }
+                .error { background: #ffe6e6; color: #d00; }
+                .success { background: #e6ffe6; color: #0a0; }
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <h1>🛠️ Universal File Editor Server</h1>
+                
+                <div class="section">
+                    <h3>1. Załaduj plik</h3>
+                    <input type="text" id="filePath" placeholder="Ścieżka do pliku (np. ./data.svg)" value="./example.svg">
+                    <button onclick="loadFile()">Załaduj</button>
+                    <div id="loadResult" class="result"></div>
+                </div>
+                
+                <div class="section">
+                    <h3>2. Zapytania XPath/CSS</h3>
+                    <input type="text" id="query" placeholder="XPath (np. //text[@id='title']) lub CSS (np. .my-class)">
+                    <select id="queryType">
+                        <option value="xpath">XPath</option>
+                        <option value="css">CSS Selector</option>
+                    </select>
+                    <button onclick="queryElements()">Wykonaj</button>
+                    <div id="queryResult" class="result"></div>
+                </div>
+                
+                <div class="section">
+                    <h3>3. Edycja elementów</h3>
+                    <input type="text" id="updateXPath" placeholder="XPath elementu do edycji">
+                    <select id="updateType">
+                        <option value="text">Tekst</option>
+                        <option value="attribute">Atrybut</option>
+                    </select>
+                    <input type="text" id="attributeName" placeholder="Nazwa atrybutu (jeśli atrybut)">
+                    <textarea id="newValue" placeholder="Nowa wartość"></textarea>
+                    <button onclick="updateElement()">Aktualizuj</button>
+                    <div id="updateResult" class="result"></div>
+                </div>
+                
+                <div class="section">
+                    <h3>4. Zapisz zmiany</h3>
+                    <input type="text" id="savePath" placeholder="Ścieżka zapisu (puste = nadpisz)">
+                    <button onclick="saveFile()">Zapisz</button>
+                    <div id="saveResult" class="result"></div>
+                </div>
+            </div>
+            
+            <script>
+                async function apiCall(endpoint, data) {
+                    try {
+                        const response = await fetch(endpoint, {
+                            method: 'POST',
+                            headers: {'Content-Type': 'application/json'},
+                            body: JSON.stringify(data)
+                        });
+                        return await response.json();
+                    } catch (error) {
+                        return {success: false, error: error.message};
+                    }
+                }
+                
+                async function loadFile() {
+                    const filePath = document.getElementById('filePath').value;
+                    const result = await apiCall('/api/load', {file_path: filePath});
+                    document.getElementById('loadResult').textContent = JSON.stringify(result, null, 2);
+                    document.getElementById('loadResult').className = 'result ' + (result.success ? 'success' : 'error');
+                }
+                
+                async function queryElements() {
+                    const query = document.getElementById('query').value;
+                    const queryType = document.getElementById('queryType').value;
+                    const result = await apiCall('/api/query', {query, type: queryType});
+                    document.getElementById('queryResult').textContent = JSON.stringify(result, null, 2);
+                    document.getElementById('queryResult').className = 'result ' + (result.success ? 'success' : 'error');
+                }
+                
+                async function updateElement() {
+                    const xpath = document.getElementById('updateXPath').value;
+                    const updateType = document.getElementById('updateType').value;
+                    const attributeName = document.getElementById('attributeName').value;
+                    const newValue = document.getElementById('newValue').value;
+                    
+                    const data = {xpath, type: updateType, value: newValue};
+                    if (updateType === 'attribute') {
+                        data.attribute = attributeName;
+                    }
+                    
+                    const result = await apiCall('/api/update', data);
+                    document.getElementById('updateResult').textContent = JSON.stringify(result, null, 2);
+                    document.getElementById('updateResult').className = 'result ' + (result.success ? 'success' : 'error');
+                }
+                
+                async function saveFile() {
+                    const savePath = document.getElementById('savePath').value;
+                    const result = await apiCall('/api/save', {output_path: savePath || null});
+                    document.getElementById('saveResult').textContent = JSON.stringify(result, null, 2);
+                    document.getElementById('saveResult').className = 'result ' + (result.success ? 'success' : 'error');
+                }
+            </script>
+        </body>
+        </html>
+        """
+        self._send_response(200, html, 'text/html')
+    
+    def _load_file(self, data):
+        """Załaduj plik do edycji"""
+        try:
+            file_path = data['file_path']
+            editor = FileEditor(file_path)
+            self.editors[file_path] = editor
+            
+            response = {
+                'success': True,
+                'message': f'File loaded: {file_path}',
+                'file_type': editor.file_type,
+                'elements_count': len(editor.find_by_xpath("//*")) if LXML_AVAILABLE else 0
+            }
+        except Exception as e:
+            response = {'success': False, 'error': str(e)}
+        
+        self._send_json_response(response)
+    
+    def _query_elements(self, data):
+        """Wykonaj zapytanie XPath/CSS"""
+        try:
+            query = data['query']
+            query_type = data.get('type', 'xpath')
+            
+            # Znajdź pierwszy załadowany plik
+            if not self.editors:
+                raise ValueError("No files loaded")
+            
+            editor = list(self.editors.values())[0]
+            
+            if query_type == 'xpath':
+                elements = editor.list_elements(query)
+            else:
+                elements = editor.find_by_css(query)
+                # Konwertuj wyniki CSS na format podobny do XPath
+                elements = [{'tag': str(elem.name), 'text': elem.get_text(), 'attributes': elem.attrs} 
+                           for elem in elements]
+            
+            response = {
+                'success': True,
+                'elements': elements,
+                'count': len(elements)
+            }
+        except Exception as e:
+            response = {'success': False, 'error': str(e)}
+        
+        self._send_json_response(response)
+    
+    def _update_element(self, data):
+        """Aktualizuj element"""
+        try:
+            xpath = data['xpath']
+            update_type = data['type']
+            value = data['value']
+            
+            if not self.editors:
+                raise ValueError("No files loaded")
+            
+            editor = list(self.editors.values())[0]
+            
+            if update_type == 'text':
+                success = editor.set_element_text(xpath, value)
+            elif update_type == 'attribute':
+                attribute = data['attribute']
+                success = editor.set_element_attribute(xpath, attribute, value)
+            else:
+                raise ValueError(f"Unknown update type: {update_type}")
+            
+            response = {
+                'success': success,
+                'message': f'Element updated successfully' if success else 'Element not found'
+            }
+        except Exception as e:
+            response = {'success': False, 'error': str(e)}
+        
+        self._send_json_response(response)
+    
+    def _save_file(self, data):
+        """Zapisz plik"""
+        try:
+            output_path = data.get('output_path')
+            
+            if not self.editors:
+                raise ValueError("No files loaded")
+            
+            editor = list(self.editors.values())[0]
+            success = editor.save(output_path)
+            
+            response = {
+                'success': success,
+                'message': f'File saved successfully to {output_path or editor.file_path}'
+            }
+        except Exception as e:
+            response = {'success': False, 'error': str(e)}
+        
+        self._send_json_response(response)
+    
+    def _send_response(self, status_code, content, content_type='text/plain'):
+        """Wyślij odpowiedź HTTP"""
+        self.send_response(status_code)
+        self.send_header('Content-type', content_type)
+        self.send_header('Access-Control-Allow-Origin', '*')
+        self.end_headers()
+        self.wfile.write(content.encode('utf-8'))
+    
+    def _send_json_response(self, data):
+        """Wyślij odpowiedź JSON"""
+        self._send_response(200, json.dumps(data, indent=2), 'application/json')
+    
+    def _send_error(self, status_code, message):
+        """Wyślij błąd"""
+        self._send_response(status_code, json.dumps({'error': message}), 'application/json')
+
+
+class CLI:
+    """Interfejs CLI"""
+    
+    def __init__(self):
+        self.editor = None
+    
+    def run(self):
+        """Uruchom CLI"""
+        parser = argparse.ArgumentParser(description='Universal File Editor CLI')
+        subparsers = parser.add_subparsers(dest='command', help='Available commands')
+        
+        # Load command
+        load_parser = subparsers.add_parser('load', help='Load file')
+        load_parser.add_argument('file', help='File path')
+        
+        # Query command
+        query_parser = subparsers.add_parser('query', help='Query elements')
+        query_parser.add_argument('xpath', help='XPath expression')
+        query_parser.add_argument('--type', choices=['text', 'attribute'], default='text')
+        query_parser.add_argument('--attr', help='Attribute name')
+        
+        # Set command
+        set_parser = subparsers.add_parser('set', help='Set element value')
+        set_parser.add_argument('xpath', help='XPath expression')
+        set_parser.add_argument('value', help='New value')
+        set_parser.add_argument('--type', choices=['text', 'attribute'], default='text')
+        set_parser.add_argument('--attr', help='Attribute name')
+        
+        # List command
+        list_parser = subparsers.add_parser('list', help='List elements')
+        list_parser.add_argument('--xpath', default='//*', help='XPath filter')
+        
+        # Save command
+        save_parser = subparsers.add_parser('save', help='Save file')
+        save_parser.add_argument('--output', help='Output file path')
+        
+        # Server command
+        server_parser = subparsers.add_parser('server', help='Start HTTP server')
+        server_parser.add_argument('--port', type=int, default=8080, help='Server port')
+        
+        # Shell command
+        shell_parser = subparsers.add_parser('shell', help='Interactive shell')
+        
+        args = parser.parse_args()
+        
+        if args.command == 'server':
+            self.start_server(args.port)
+        elif args.command == 'shell':
+            self.start_shell()
+        else:
+            self.execute_command(args)
+    
+    def execute_command(self, args):
+        """Wykonaj komendę CLI"""
+        try:
+            if args.command == 'load':
+                self.editor = FileEditor(args.file)
+                print(f"✅ Loaded {args.file} ({self.editor.file_type})")
+            
+            elif args.command == 'query':
+                if not self.editor:
+                    print("❌ No file loaded. Use 'load' command first.")
+                    return
+                
+                if args.type == 'text':
+                    result = self.editor.get_element_text(args.xpath)
+                    print(f"Text: {result}")
+                elif args.type == 'attribute':
+                    if not args.attr:
+                        print("❌ --attr required for attribute queries")
+                        return
+                    result = self.editor.get_element_attribute(args.xpath, args.attr)
+                    print(f"Attribute {args.attr}: {result}")
+            
+            elif args.command == 'set':
+                if not self.editor:
+                    print("❌ No file loaded. Use 'load' command first.")
+                    return
+                
+                if args.type == 'text':
+                    success = self.editor.set_element_text(args.xpath, args.value)
+                elif args.type == 'attribute':
+                    if not args.attr:
+                        print("❌ --attr required for attribute updates")
+                        return
+                    success = self.editor.set_element_attribute(args.xpath, args.attr, args.value)
+                
+                if success:
+                    print("✅ Element updated")
+                else:
+                    print("❌ Element not found")
+            
+            elif args.command == 'list':
+                if not self.editor:
+                    print("❌ No file loaded. Use 'load' command first.")
+                    return
+                
+                elements = self.editor.list_elements(args.xpath)
+                for elem in elements:
+                    print(f"Path: {elem['path']}")
+                    print(f"  Tag: {elem['tag']}")
+                    print(f"  Text: {repr(elem['text'])}")
+                    print(f"  Attributes: {elem['attributes']}")
+                    print()
+            
+            elif args.command == 'save':
+                if not self.editor:
+                    print("❌ No file loaded. Use 'load' command first.")
+                    return
+                
+                success = self.editor.save(args.output)
+                if success:
+                    print(f"✅ File saved to {args.output or self.editor.file_path}")
+                else:
+                    print("❌ Save failed")
+        
+        except Exception as e:
+            print(f"❌ Error: {e}")
+    
+    def start_shell(self):
+        """Uruchom interaktywny shell"""
+        print("🚀 Interactive File Editor Shell")
+        print("Commands: load <file>, query <xpath>, set <xpath> <value>, list, save, exit")
+        print()
+        
+        while True:
+            try:
+                command_line = input("📝 > ").strip()
+                if not command_line:
+                    continue
+                
+                if command_line == 'exit':
+                    break
+                
+                parts = command_line.split()
+                command = parts[0]
+                
+                if command == 'load' and len(parts) == 2:
+                    self.editor = FileEditor(parts[1])
+                    print(f"✅ Loaded {parts[1]} ({self.editor.file_type})")
+                
+                elif command == 'query' and len(parts) >= 2:
+                    if not self.editor:
+                        print("❌ No file loaded")
+                        continue
+                    xpath = ' '.join(parts[1:])
+                    result = self.editor.get_element_text(xpath)
+                    print(f"Result: {result}")
+                
+                elif command == 'set' and len(parts) >= 3:
+                    if not self.editor:
+                        print("❌ No file loaded")
+                        continue
+                    xpath = parts[1]
+                    value = ' '.join(parts[2:])
+                    success = self.editor.set_element_text(xpath, value)
+                    print("✅ Updated" if success else "❌ Not found")
+                
+                elif command == 'list':
+                    if not self.editor:
+                        print("❌ No file loaded")
+                        continue
+                    elements = self.editor.list_elements()[:10]  # limit to 10
+                    for elem in elements:
+                        print(f"{elem['tag']}: {repr(elem['text'][:50])}")
+                
+                elif command == 'save':
+                    if not self.editor:
+                        print("❌ No file loaded")
+                        continue
+                    output = parts[1] if len(parts) > 1 else None
+                    success = self.editor.save(output)
+                    print("✅ Saved" if success else "❌ Save failed")
+                
+                else:
+                    print("❌ Unknown command or wrong arguments")
+            
+            except KeyboardInterrupt:
+                print("\n👋 Goodbye!")
+                break
+            except Exception as e:
+                print(f"❌ Error: {e}")
+    
+    def start_server(self, port):
+        """Uruchom serwer HTTP"""
+        print(f"🌐 Starting File Editor Server on port {port}")
+        print(f"Open http://localhost:{port} in your browser")
+        
+        server = HTTPServer(('localhost', port), FileEditorServer)
+        try:
+            server.serve_forever()
+        except KeyboardInterrupt:
+            print("\n👋 Server stopped")
+
+
+def create_example_files():
+    """Utwórz przykładowe pliki do testowania"""
+    
+    # Przykładowy SVG
+    svg_content = '''<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200">
+    <metadata>
+        <title>Example SVG</title>
+        <description>Test file for editor</description>
+    </metadata>
+    <rect x="10" y="10" width="50" height="50" fill="red" id="square1"/>
+    <circle cx="100" cy="100" r="30" fill="blue" id="circle1"/>
+    <text x="50" y="150" id="text1" font-size="16">Hello World</text>
+</svg>'''
+    
+    # Przykładowy XML
+    xml_content = '''<?xml version="1.0" encoding="UTF-8"?>
+<data>
+    <metadata>
+        <title>Example Data</title>
+        <version>1.0</version>
+    </metadata>
+    <records>
+        <record id="1">
+            <name>John Doe</name>
+            <age>30</age>
+            <email>john@example.com</email>
+        </record>
+        <record id="2">
+            <name>Jane Smith</name>
+            <age>25</age>
+            <email>jane@example.com</email>
+        </record>
+    </records>
+</data>'''
+    
+    # Przykładowy HTML
+    html_content = '''<!DOCTYPE html>
+<html>
+<head>
+    <title>Example HTML</title>
+    <meta name="description" content="Test HTML file">
+</head>
+<body>
+    <h1 id="main-title">Welcome</h1>
+    <div class="content">
+        <p id="intro">This is a test paragraph.</p>
+        <ul>
+            <li class="item">Item 1</li>
+            <li class="item">Item 2</li>
+        </ul>
+    </div>
+</body>
+</html>'''
+    
+    # Zapisz przykładowe pliki
+    with open('example.svg', 'w', encoding='utf-8') as f:
+        f.write(svg_content)
+    
+    with open('example.xml', 'w', encoding='utf-8') as f:
+        f.write(xml_content)
+    
+    with open('example.html', 'w', encoding='utf-8') as f:
+        f.write(html_content)
+    
+    print("✅ Created example files: example.svg, example.xml, example.html")
+
+
+if __name__ == '__main__':
+    # Sprawdź czy mamy przykładowe pliki
+    if not any(Path(f).exists() for f in ['example.svg', 'example.xml', 'example.html']):
+        print("📁 Creating example files...")
+        create_example_files()
+    
+    # Uruchom CLI
+    cli = CLI()
+    cli.run()

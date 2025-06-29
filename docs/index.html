@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Przykład HTML jako kontenera danych z metadanymi i aplikacją">
+    <meta name="author" content="Demo Application">
+    <meta name="created" content="2025-06-28">
+    <title>Kontener Danych - HTML</title>
+
+    <!-- Dane w formacie JSON osadzone w HTML -->
+    <script type="application/json" id="data-store">
+    {
+        "metadata": {
+            "title": "Dane sprzedażowe Q1 2025",
+            "version": "1.0",
+            "created": "2025-06-28",
+            "format": "quarterly-sales"
+        },
+        "data": [
+            {"month": "Styczeń", "sales": 150000, "region": "Północ"},
+            {"month": "Luty", "sales": 180000, "region": "Północ"},
+            {"month": "Marzec", "sales": 220000, "region": "Północ"},
+            {"month": "Styczeń", "sales": 130000, "region": "Południe"},
+            {"month": "Luty", "sales": 160000, "region": "Południe"},
+            {"month": "Marzec", "sales": 190000, "region": "Południe"}
+        ],
+        "config": {
+            "currency": "PLN",
+            "chart_type": "bar",
+            "colors": ["#3498db", "#e74c3c"]
+        }
+    }
+    </script>
+
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #333;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            border-bottom: 3px solid #667eea;
+            padding-bottom: 20px;
+        }
+
+        .metadata {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+            border-left: 5px solid #667eea;
+        }
+
+        .controls {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        button, select {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            background: #667eea;
+            color: white;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background 0.3s;
+        }
+
+        button:hover, select:hover {
+            background: #5a67d8;
+        }
+
+        select {
+            background: white;
+            color: #333;
+            border: 2px solid #667eea;
+        }
+
+        .chart-container {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+            min-height: 300px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        .data-table th, .data-table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+
+        .data-table th {
+            background: #667eea;
+            color: white;
+            font-weight: 600;
+        }
+
+        .data-table tr:hover {
+            background: #f5f5f5;
+        }
+
+        .export-section {
+            background: #e8f4f8;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+        }
+
+        .bar {
+            display: inline-block;
+            margin: 2px;
+            padding: 5px 10px;
+            border-radius: 3px;
+            color: white;
+            font-size: 12px;
+        }
+
+        .region-north { background: #3498db; }
+        .region-south { background: #e74c3c; }
+
+        .chart-bar {
+            height: 200px;
+            display: flex;
+            align-items: end;
+            gap: 10px;
+            padding: 20px;
+        }
+
+        .chart-bar-item {
+            flex: 1;
+            background: linear-gradient(to top, #667eea, #764ba2);
+            color: white;
+            padding: 10px 5px;
+            text-align: center;
+            border-radius: 5px 5px 0 0;
+            font-size: 11px;
+            transition: all 0.3s;
+            cursor: pointer;
+        }
+
+        .chart-bar-item:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📊 Uniwersalny Kontener Danych HTML</h1>
+            <p>Dane + Metadane + Aplikacja w jednym pliku</p>
+        </div>
+
+        <div class="metadata">
+            <h3>📋 Metadane dokumentu</h3>
+            <div id="metadata-display"></div>
+        </div>
+
+        <div class="controls">
+            <div class="control-group">
+                <label>Widok:</label>
+                <select id="view-selector">
+                    <option value="chart">Wykres</option>
+                    <option value="table">Tabela</option>
+                    <option value="summary">Podsumowanie</option>
+                </select>
+            </div>
+
+            <div class="control-group">
+                <label>Region:</label>
+                <select id="region-filter">
+                    <option value="all">Wszystkie</option>
+                    <option value="Północ">Północ</option>
+                    <option value="Południe">Południe</option>
+                </select>
+            </div>
+
+            <button onclick="exportData('json')">📥 Eksport JSON</button>
+            <button onclick="exportData('csv')">📥 Eksport CSV</button>
+            <button onclick="refreshData()">🔄 Odśwież</button>
+        </div>
+
+        <div id="content-area">
+            <div class="chart-container" id="chart-container">
+                <div class="chart-bar" id="chart-display"></div>
+            </div>
+        </div>
+
+        <div class="export-section">
+            <h3>💾 Eksport i przenośność</h3>
+            <p>Ten plik HTML zawiera wszystko: dane, metadane, interfejs i logikę.
+            Można go przenosić między systemami, otwierać offline, i modyfikować bez zewnętrznych zależności.</p>
+            <small>Rozmiar: ~8KB | Format: HTML5 | Kompatybilność: 100%</small>
+        </div>
+    </div>
+
+    <script>
+        // Załaduj dane z osadzonego JSON
+        const dataStore = JSON.parse(document.getElementById('data-store').textContent);
+        let currentData = dataStore.data;
+        let currentView = 'chart';
+        let currentRegion = 'all';
+
+        // Wyświetl metadane
+        function displayMetadata() {
+            const metadataDiv = document.getElementById('metadata-display');
+            const meta = dataStore.metadata;
+            metadataDiv.innerHTML = `
+                <strong>Tytuł:</strong> ${meta.title}<br>
+                <strong>Wersja:</strong> ${meta.version}<br>
+                <strong>Utworzono:</strong> ${meta.created}<br>
+                <strong>Format:</strong> ${meta.format}<br>
+                <strong>Rekordów:</strong> ${dataStore.data.length}
+            `;
+        }
+
+        // Filtruj dane
+        function filterData() {
+            if (currentRegion === 'all') {
+                currentData = dataStore.data;
+            } else {
+                currentData = dataStore.data.filter(item => item.region === currentRegion);
+            }
+            updateView();
+        }
+
+        // Aktualizuj widok
+        function updateView() {
+            const contentArea = document.getElementById('content-area');
+
+            switch(currentView) {
+                case 'chart':
+                    showChart();
+                    break;
+                case 'table':
+                    showTable();
+                    break;
+                case 'summary':
+                    showSummary();
+                    break;
+            }
+        }
+
+        // Pokaż wykres
+        function showChart() {
+            const chartContainer = document.getElementById('chart-container');
+            const maxValue = Math.max(...currentData.map(d => d.sales));
+
+            const chartHTML = currentData.map(item => {
+                const height = (item.sales / maxValue) * 100;
+                const colorClass = item.region === 'Północ' ? 'region-north' : 'region-south';
+                return `
+                    <div class="chart-bar-item ${colorClass}"
+                         style="height: ${height}%"
+                         title="${item.month}: ${item.sales.toLocaleString()} PLN">
+                        <div>${item.month}</div>
+                        <div>${(item.sales/1000).toFixed(0)}k</div>
+                    </div>
+                `;
+            }).join('');
+
+            chartContainer.innerHTML = `<div class="chart-bar">${chartHTML}</div>`;
+        }
+
+        // Pokaż tabelę
+        function showTable() {
+            const chartContainer = document.getElementById('chart-container');
+            const tableHTML = `
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Miesiąc</th>
+                            <th>Sprzedaż</th>
+                            <th>Region</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${currentData.map(item => `
+                            <tr>
+                                <td>${item.month}</td>
+                                <td>${item.sales.toLocaleString()} PLN</td>
+                                <td><span class="bar ${item.region === 'Północ' ? 'region-north' : 'region-south'}">${item.region}</span></td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            `;
+            chartContainer.innerHTML = tableHTML;
+        }
+
+        // Pokaż podsumowanie
+        function showSummary() {
+            const total = currentData.reduce((sum, item) => sum + item.sales, 0);
+            const avg = total / currentData.length;
+            const regions = [...new Set(currentData.map(item => item.region))];
+
+            const summaryHTML = `
+                <div style="text-align: center; padding: 40px;">
+                    <h2>📈 Podsumowanie sprzedaży</h2>
+                    <div style="display: flex; justify-content: space-around; margin: 30px 0;">
+                        <div>
+                            <h3>${total.toLocaleString()} PLN</h3>
+                            <p>Łączna sprzedaż</p>
+                        </div>
+                        <div>
+                            <h3>${avg.toLocaleString()} PLN</h3>
+                            <p>Średnia miesięczna</p>
+                        </div>
+                        <div>
+                            <h3>${regions.length}</h3>
+                            <p>Regiony</p>
+                        </div>
+                    </div>
+                    <p><strong>Regiony:</strong> ${regions.join(', ')}</p>
+                </div>
+            `;
+            document.getElementById('chart-container').innerHTML = summaryHTML;
+        }
+
+        // Eksportuj dane
+        function exportData(format) {
+            let content, filename, mimeType;
+
+            if (format === 'json') {
+                content = JSON.stringify(dataStore, null, 2);
+                filename = 'dane_sprzedazy.json';
+                mimeType = 'application/json';
+            } else if (format === 'csv') {
+                const headers = ['Miesiąc', 'Sprzedaż', 'Region'];
+                const csv = [headers.join(',')];
+                currentData.forEach(item => {
+                    csv.push(`${item.month},${item.sales},${item.region}`);
+                });
+                content = csv.join('\n');
+                filename = 'dane_sprzedazy.csv';
+                mimeType = 'text/csv';
+            }
+
+            const blob = new Blob([content], { type: mimeType });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        // Odśwież dane
+        function refreshData() {
+            displayMetadata();
+            filterData();
+            alert('Dane odświeżone!');
+        }
+
+        // Event listeners
+        document.getElementById('view-selector').addEventListener('change', (e) => {
+            currentView = e.target.value;
+            updateView();
+        });
+
+        document.getElementById('region-filter').addEventListener('change', (e) => {
+            currentRegion = e.target.value;
+            filterData();
+        });
+
+        // Inicjalizacja
+        displayMetadata();
+        filterData();
+    </script>
+</body>
+</html>
