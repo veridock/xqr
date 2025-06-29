@@ -1,9 +1,10 @@
 """
 Example file generator for testing the Universal File Editor
 """
+from pathlib import Path
 
 
-def create_example_files():
+def create_example_files() -> None:
     """Utwórz przykładowe pliki do testowania"""
 
     # Przykładowy SVG
