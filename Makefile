@@ -1,157 +1,150 @@
-.PHONY: help
-help:  ## Display this help message
-	@echo "Please use 'make <target>' where <target> is one of"
-	@echo
-	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'
-	@echo
-
-# Development
-.PHONY: install
-install:  ## Install the package in development mode
-	@echo "Installing package in development mode..."
-	pip install -e .[dev]
-
-.PHONY: install-all
-install-all:  ## Install with all optional dependencies
-	@echo "Installing package with all optional dependencies..."
-	pip install -e ".[dev,data]"
-
-.PHONY: install-tools
-install-tools:  ## Install development tools
-	@echo "Installing development tools..."
-	pip install -U pip setuptools wheel
-	pip install -U black isort flake8 mypy pytest pytest-cov build twine
-
-# Formatting and Linting
-.PHONY: format
-format:  ## Format code with black and isort
-	@echo "Formatting code..."
-	black src tests
-	isort src tests
-
-.PHONY: lint
-lint:  ## Run linters (black, isort, flake8, mypy)
-	@echo "Running linters..."
-	black --check --diff src tests
-	isort --check-only src tests
-	flake8 src tests
-	mypy src
-
-# Testing
-.PHONY: test
-TEST_PATH=./tests
-.PHONY: test
-test:  ## Run tests
-	@echo "Running tests..."
-	pytest $(TEST_PATH) -v --cov=xqr --cov-report=term-missing --cov-report=xml:coverage.xml
-
-.PHONY: test-cov
-test-cov:  ## Run tests with coverage report
-	@echo "Running tests with coverage..."
-	pytest --cov=xqr --cov-report=html:htmlcov
-
-.PHONY: test-all
-test-all:  ## Run all tests with coverage and linting
-	@echo "Running all tests with coverage and linting..."
-	make lint
-	make test
-	make test-cov
-
-# Documentation
-.PHONY: docs
-docs:  ## Generate documentation
-	@echo "Generating documentation..."
-	cd docs && $(MAKE) html
-
-.PHONY: docs-serve
-docs-serve: docs  ## Serve documentation locally
-	@echo "Serving documentation at http://localhost:8000"
-	python -m http.server --directory docs/_build/html 8000
-
-# Build and Release
-.PHONY: build
-build:  ## Build source and wheel packages
-	@echo "Building source and wheel packages..."
-	python3 -m build
-
-.PHONY: check-build
-check-build:  ## Check the built package
-	@echo "Checking built package..."
-	twine check dist/*
-
-.PHONY: publish-test
-publish-test: build check-build  ## Upload to test PyPI
-	@echo "Uploading to test PyPI..."
-	twine upload --repository testpypi dist/*
-
-.PHONY: publish
-publish:  ## Upload to PyPI
-	poetry version patch
-	poetry build
-	poetry publish
-
-.PHONY: push
-push:  ## Push code to remote repository
-	@echo "Pushing to remote repository..."
-	git push origin $(shell git rev-parse --abbrev-ref HEAD)
-	git push --tags
-
-# Cleanup
-.PHONY: clean
-clean:  ## Remove build artifacts, cache, and test artifacts
-	@echo "Cleaning up..."
-	rm -rf build/ dist/ *.egg-info/ .pytest_cache/ .mypy_cache/ .coverage coverage.xml htmlcov/ .tox/ .cache/ .eggs/ .hypothesis/
-	find . -type d -name '__pycache__' -exec rm -rf {} +
-	find . -type f -name '*.pyc' -delete
-	find . -type f -name '*.pyo' -delete
-	find . -type f -name '*~' -delete
-	find . -type f -name '*.swp' -delete
-	find . -type f -name '*.swo' -delete
-
-# Virtual Environment
-.PHONY: venv
-venv:  ## Create a virtual environment
-	@echo "Creating virtual environment..."
-	python -m venv venv
-
-.PHONY: activate
-activate:  ## Activate the virtual environment
-	@echo "Run 'source venv/bin/activate' to activate the virtual environment"
-
-# Development Server
-.PHONY: run
-run:  ## Run the development server
-	@echo "Starting development server..."
-	python -m xqr
-
-# Dependencies
-.PHONY: deps-outdated
-deps-outdated:  ## Check for outdated dependencies
-	@echo "Checking for outdated dependencies..."
-	pip list --outdated
-
-.PHONY: deps-upgrade
-deps-upgrade:  ## Upgrade all dependencies
-	@echo "Upgrading all dependencies..."
-	pip install --upgrade -r requirements.txt
-
-# Git Hooks
-.PHONY: install-hooks
-install-hooks:  ## Install git hooks
-	@echo "Installing git hooks..."
-	echo '#!/bin/sh\nmake lint test' > .git/hooks/pre-commit
-	chmod +x .git/hooks/pre-commit
-
-# Docker
-.PHONY: docker-build
-docker-build:  ## Build Docker image
-	@echo "Building Docker image..."
-	docker build -t xqr .
-
-.PHONY: docker-run
-docker-run:  ## Run Docker container
-	@echo "Running Docker container..."
-	docker run -it --rm xqr
+.PHONY: help install install-dev test test-coverage lint format type-check clean build publish examples run-server run-shell
 
 # Default target
-.DEFAULT_GOAL := help
+help:
+	@echo "Universal File Editor - Available Commands:"
+	@echo ""
+	@echo "Setup & Installation:"
+	@echo "  install      - Install package with Poetry"
+	@echo "  install-dev  - Install with development dependencies"
+	@echo ""
+	@echo "Development:"
+	@echo "  test         - Run test suite"
+	@echo "  test-cov     - Run tests with coverage report"
+	@echo "  lint         - Run linting (flake8)"
+	@echo "  format       - Format code with black"
+	@echo "  type-check   - Run mypy type checking"
+	@echo ""
+	@echo "Usage:"
+	@echo "  examples     - Create example files"
+	@echo "  run-server   - Start HTTP server on port 8080"
+	@echo "  run-shell    - Start interactive shell"
+	@echo ""
+	@echo "Distribution:"
+	@echo "  build        - Build package"
+	@echo "  publish      - Publish to PyPI"
+	@echo "  clean        - Clean build artifacts"
+
+# Installation
+install:
+	poetry install --only=main
+
+install-dev:
+	poetry install
+	poetry run pre-commit install
+
+# Testing
+test:
+	poetry run pytest -v
+
+test-cov:
+	poetry run pytest --cov=file_editor --cov-report=term-missing --cov-report=html
+
+test-watch:
+	poetry run pytest-watch
+
+# Code Quality
+lint:
+	poetry run flake8 file_editor/ tests/
+
+format:
+	poetry run black file_editor/ tests/
+
+format-check:
+	poetry run black --check file_editor/ tests/
+
+type-check:
+	poetry run mypy file_editor/
+
+# All quality checks
+check: format-check lint type-check test
+
+# Usage Examples
+examples:
+	poetry run file-editor examples
+
+run-server:
+	poetry run file-editor server --port 8080
+
+run-shell:
+	poetry run file-editor shell
+
+# Demo commands
+demo-svg:
+	poetry run file-editor examples
+	poetry run file-editor load example.svg
+	poetry run file-editor query "//text[@id='text1']"
+	poetry run file-editor set "//text[@id='text1']" "Updated from Makefile!"
+	poetry run file-editor save
+
+demo-xml:
+	poetry run file-editor examples
+	poetry run file-editor load example.xml
+	poetry run file-editor query "//record[@id='1']/name"
+	poetry run file-editor list --xpath "//record"
+
+# Development workflow
+dev-setup: install-dev examples
+	@echo "✅ Development environment ready!"
+	@echo "Try: make demo-svg or make run-server"
+
+# Build and Distribution
+clean:
+	rm -rf dist/
+	rm -rf build/
+	rm -rf *.egg-info/
+	rm -rf .coverage
+	rm -rf htmlcov/
+	rm -rf .pytest_cache/
+	rm -rf .mypy_cache/
+	find . -type d -name __pycache__ -delete
+	find . -type f -name "*.pyc" -delete
+
+build: clean
+	poetry build
+
+publish: build
+	poetry publish
+
+publish-test: build
+	poetry publish --repository testpypi
+
+# Documentation
+docs:
+	@echo "📚 Documentation available at:"
+	@echo "  README.md - Main documentation"
+	@echo "  file_editor/ - Source code with docstrings"
+
+# Docker targets (if needed in future)
+docker-build:
+	docker build -t universal-file-editor .
+
+docker-run:
+	docker run -p 8080:8080 universal-file-editor server
+
+# Maintenance
+update-deps:
+	poetry update
+
+security-check:
+	poetry run safety check
+
+# CI/CD helpers
+ci-test: install-dev check
+
+# Quick development cycle
+dev: format type-check test
+	@echo "✅ Development cycle complete!"
+
+# Benchmark (if performance tests are added)
+benchmark:
+	poetry run python -m pytest tests/test_performance.py -v
+
+# Package info
+info:
+	@echo "Package: universal-file-editor"
+	@poetry version
+	@echo "Python: $(shell python --version)"
+	@echo "Poetry: $(shell poetry --version)"
+	@echo "Dependencies:"
+	@poetry show --tree
