@@ -1,0 +1,6 @@
+How to import file and export from SVG
+how to and when encode to the SVG uri data?
+
+show exampole with pdf included to the svg
+
+and show how to in the next step the pdf is readed through tesseract to extract metadata and include to metadata in svg, step by step show tto work with such data processing

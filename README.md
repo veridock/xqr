@@ -1,77 +1,88 @@
 # 🛠️ XQR - XPath Query & Replace
 
-Powerful CLI tool for editing SVG, HTML, and XML files using XPath and CSS selectors. Edit your structured documents directly from the command line or through a web interface.
+[![PyPI](https://img.shields.io/pypi/v/xqr)](https://pypi.org/project/xqr/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Python Version](https://img.shields.io/pypi/pyversions/xqr)](https://pypi.org/project/xqr/)
 
-## 🎯 What is XQR?
+XQR is a powerful command-line tool for editing and converting structured documents (SVG, HTML, XML) using XPath and CSS selectors. It's designed for developers, data engineers, and designers who need to manipulate structured data efficiently.
 
-**XQR** (XPath Query & Replace) is a universal file editor that treats SVG, HTML, and XML as structured data containers. Use familiar XPath expressions and CSS selectors to query, modify, and manipulate content without specialized applications.
+## ✨ Features
 
-Perfect for:
-- **Data Engineers** - batch processing XML/SVG files
-- **DevOps** - configuration management and automation
-- **Web Developers** - HTML content manipulation
-- **Designers** - SVG batch editing and metadata management
+- **Universal Document Editor**: Edit SVG, HTML, and XML files with XPath/CSS selectors
+- **PDF to SVG Conversion**: Convert PDFs to SVG with embedded metadata and text extraction
+- **SVG to PDF/Image**: Convert SVGs to PDF, PNG, and JPG formats
+- **Batch Processing**: Process multiple files with a single command
+- **REST API**: Built-in web server for programmatic access
+- **Cross-Platform**: Works on Linux, macOS, and Windows
 
-## 🚀 Features
+## 🚀 Quick Start
 
-- **Multiple File Formats**: SVG, HTML, XML support with automatic format detection
-- **XPath Queries**: Full XPath 1.0 support for precise element selection
-- **CSS Selectors**: CSS selector support for HTML files
-- **Multiple Interfaces**: CLI commands, interactive shell, and web server
-- **State Persistence**: Remembers the last loaded file between commands
-- **REST API**: Programmatic access via HTTP endpoints
-- **Batch Processing**: Automate edits across multiple files
-- **Backup System**: Automatic backup creation before modifications
+### Installation
 
-## 📦 Installation
-
-### Using Poetry (Recommended)
+See the [Installation Guide](docs/INSTALLATION.md) for complete setup instructions.
 
 ```bash
-# Clone the repository
-git clone https://github.com/veridock/xqr.git
-cd xqr
-
-# Install with Poetry
-poetry install
-
-# Activate the environment
-poetry shell
-```
-
-### Using pip
-
-```bash
+# Basic installation with pip
 pip install xqr
 ```
 
-## 📖 Basic Usage
+### Basic Usage
 
-### Command Structure
+Check out the [Examples](docs/EXAMPLES.md) for comprehensive usage patterns.
 
-XQR supports several ways to run commands:
+```bash
+# Query elements with XPath
+xqr query document.html "//h1"
 
-1. **Direct mode** (single command):
-   ```bash
-   xqr file.xml//xpath [value]
-   ```
+# Update content
+xqr set document.html "//title" "New Title"
 
-2. **Command mode** (subcommands):
-   ```bash
-   xqr query file.xml "//xpath"
-   xqr set file.xml "//xpath" "new value"
-   ```
+# Convert between formats
+xqr convert input.pdf output.svg
+```
 
-3. **Interactive shell** (for multiple operations):
-   ```bash
-   xqr shell file.xml
-   > query "//xpath"
-   > set "//xpath" "new value"
-   > save
-   > exit
-   ```
+## 📚 Documentation
 
-### Querying Elements
+For detailed documentation, please visit our [documentation website](https://veridock.github.io/xqr/) or check the following resources:
+
+- [Installation Guide](docs/INSTALLATION.md) - Complete setup instructions
+- [PDF to SVG Workflow](docs/WORKFLOW_PDF_TO_SVG.md) - Working with PDF files
+- [SVG to PDF/Image](docs/WORKFLOW_SVG_TO_PDF.md) - Converting SVG files
+- [API Reference](docs/API.md) - Detailed API documentation
+- [Examples](docs/EXAMPLES.md) - Practical usage examples
+- [Troubleshooting](docs/TROUBLESHOOTING.md) - Solutions to common issues
+
+## 💡 Features in Detail
+
+### Document Editing
+- XPath 1.0 and CSS selector support
+- Batch processing of multiple files
+- Automatic backup system
+- Interactive shell for complex operations
+
+### PDF to SVG Conversion
+- Extract text and metadata
+- Handle password-protected PDFs
+- Custom DPI settings for OCR
+- Multiple output formats (SVG, HTML, JSON)
+
+### SVG Processing
+- Convert to PDF, PNG, and JPG
+- Handle embedded resources
+- Advanced image processing options
+- Batch conversion tools
+
+## 🤝 Contributing
+
+Contributions are welcome! Please read our [Contributing Guide](docs/CONTRIBUTING.md) for details on how to contribute to this project.
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## Getting Help
+
+Having trouble with XQR? Check out our [Troubleshooting Guide](docs/TROUBLESHOOTING.md) or [open an issue](https://github.com/veridock/xqr/issues) if you can't find what you need.
 
 You can run the XQR CLI in several ways depending on your setup:
 
@@ -448,22 +459,16 @@ xqr shell << EOF
 load sales-data.xml
 list //record[sales>10000]
 set //record[sales>10000]/status "high-performer"
-save processed-sales.xml
-exit
-EOF
-```
-
-### SVG Automation
-```bash
-# Update chart data and metadata
-xqr load quarterly-chart.svg
-xqr set "//text[@class='chart-title']" "Q1 2025 Results"
-xqr set "//metadata/generated" "$(date)"
-xqr setattr "//rect[@class='revenue-bar']" height "250"
 xqr save
 ```
 
-## 🤝 Contributing
+## Documentation
+
+* [Full Documentation](https://github.com/veridock/xqr#readme)
+* [XPath Examples](https://github.com/veridock/xqr#xpath-examples)
+* [CSS Selector Examples](https://github.com/veridock/xqr#css-selector-examples)
+
+## Contributing
 
 1. Fork the repository
 2. Create a feature branch (`git checkout -b feature/xpath-improvements`)

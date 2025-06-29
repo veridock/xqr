@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
+  <title>SVG with Embedded PDF</title>
+  <desc>This SVG contains an embedded PDF document</desc>
+  
+  <!-- Add a rectangle as background -->
+  <rect width="100%" height="100%" fill="#f0f0f0"/>
+  
+  <!-- Add title -->
+  <text x="20" y="40" font-family="Arial" font-size="24">
+    Embedded PDF Document
+  </text>
+  
+  <!-- Embed PDF using data URI (sample PDF content) -->
+  <foreignObject x="20" y="60" width="400" height="500">
+    <object data="data:application/pdf;base64,JVBERi0xLjcKCjEgMCBvYmogICUgZW50cnkgcG9pbnQKPDwKICAvVHlwZSAvQ2F0YWxvZwog
+IC9QYWdlcyAyIDAgUgo+PgplbmRvYmoKCjIgMCBvYmoKPDwKICAvVHlwZSAvUGFnZXMKICAv
+S2lkcyBbMyAwIFJdCiAgL0NvdW50IDEKPj4KZW5kb2JqCgozIDAgb2JqCjw8CiAgL1R5cGUg
+L1BhZ2UKICAvUGFyZW50IDIgMCBSCiAgL01lZGlhQm94IFswIDAgNTk1IDg0Ml0KICAvQ29u
+dGVudHMgNCAwIFIKPj4KZW5kb2JqCgo0IDAgb2JqCjw8CiAgL0xlbmd0aCA1NQo+PgpzdHJl
+YW0KQlQNCjAgMCBUZAovRjEgMjAgVGYKKFRoaXMgaXMgYSBzYW1wbGUgUERGIGZpbGUpClRq
+CkVNQwoKZW5kc3RyZWFtCmVuZG9iagoKeHJlZgowIDUKMDAwMDAwMDAwMCA2NTUzNSBmIAow
+MDAwMDAwMDE1IDAwMDAwIG4gCjAwMDAwMDAwNjkgMDAwMDAgbiAKMDAwMDAwMDEyNSAwMDAw
+MCBuIAowMDAwMDAwMjg5IDAwMDAwIG4gCnRyYWlsZXIKPDwKICAvUm9vdCAxIDAgUgogIC9J
+bmZvIDUgMCBSCiAgL1NpemUgNQo+PgpzdGFydHhyZWYKMzY1CiUlRU9GCg==" 
+         type="application/pdf" 
+         width="100%" 
+         height="100%">
+      <p>Unable to display PDF. <a href="data:application/pdf;base64,JVBERi0xLjcKCjEgMCBvYmogICUgZW50cnkgcG9pbnQKPDwKICAvVHlwZSAvQ2F0YWxvZwog
+IC9QYWdlcyAyIDAgUgo+PgplbmRvYmoKCjIgMCBvYmoKPDwKICAvVHlwZSAvUGFnZXMKICAv
+S2lkcyBbMyAwIFJdCiAgL0NvdW50IDEKPj4KZW5kb2JqCgozIDAgb2JqCjw8CiAgL1R5cGUg
+L1BhZ2UKICAvUGFyZW50IDIgMCBSCiAgL01lZGlhQm94IFswIDAgNTk1IDg0Ml0KICAvQ29u
+dGVudHMgNCAwIFIKPj4KZW5kb2JqCgo0IDAgb2JqCjw8CiAgL0xlbmd0aCA1NQo+PgpzdHJl
+YW0KQlQNCjAgMCBUZAovRjEgMjAgVGYKKFRoaXMgaXMgYSBzYW1wbGUgUERGIGZpbGUpClRq
+CkVNQwoKZW5kc3RyZWFtCmVuZG9iagoKeHJlZgowIDUKMDAwMDAwMDAwMCA2NTUzNSBmIAow
+MDAwMDAwMDE1IDAwMDAwIG4gCjAwMDAwMDAwNjkgMDAwMDAgbiAKMDAwMDAwMDEyNSAwMDAw
+MCBuIAowMDAwMDAwMjg5IDAwMDAwIG4gCnRyYWlsZXIKPDwKICAvUm9vdCAxIDAgUgogIC9J
+bmZvIDUgMCBSCiAgL1NpemUgNQo+PgpzdGFydHhyZWYKMzY1CiUlRU9GCg==">Download PDF</a></p>
+    </object>
+  </foreignObject>
+  
+  <!-- Add metadata -->
+  <metadata>
+    <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+             xmlns:dc="http://purl.org/dc/elements/1.1/">
+      <rdf:Description rdf:about=""
+            dc:title="Sample SVG with PDF"
+            dc:creator="XQR Example Generator"
+            dc:description="An example SVG with an embedded PDF">
+      </rdf:Description>
+    </rdf:RDF>
+  </metadata>
+</svg>

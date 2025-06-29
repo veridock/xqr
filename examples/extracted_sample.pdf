@@ -1,0 +1,57 @@
+%PDF-1.7
+
+1 0 obj  % entry point
+<<
+  /Type /Catalog
+  /Pages 2 0 R
+>>
+endobj
+
+2 0 obj
+<<
+  /Type /Pages
+  /Kids [3 0 R]
+  /Count 1
+>>
+endobj
+
+3 0 obj
+<<
+  /Type /Page
+  /Parent 2 0 R
+  /MediaBox [0 0 595 842]
+  /Contents 4 0 R
+>>
+endobj
+
+4 0 obj
+<<
+  /Length 55
+>>
+stream
+BT
+0 0 Td
+/F1 20 Tf
+(This is a sample PDF file)
+Tj
+EMC
+
+endstream
+endobj
+
+xref
+0 5
+0000000000 65535 f 
+0000000015 00000 n 
+0000000069 00000 n 
+0000000125 00000 n 
+0000000289 00000 n 
+trailer
+<<
+  /Root 1 0 R
+  /Info 5 0 R
+  /Size 5
+>>
+startxref
+365
+%%EOF

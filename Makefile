@@ -1,4 +1,4 @@
-.PHONY: help install install-dev test test-coverage lint format type-check clean build publish examples run-server run-shell
+.PHONY: help install install-dev test test-coverage lint format type-check clean build publish examples run-server run-shell push
 
 # Default target
 help:
@@ -24,6 +24,7 @@ help:
 	@echo "  build        - Build package"
 	@echo "  publish      - Publish to PyPI"
 	@echo "  clean        - Clean build artifacts"
+	@echo "  push         - Commit and push changes to git"
 
 # Installation
 install:
@@ -109,6 +110,15 @@ publish: build
 
 publish-test: build
 	poetry publish --repository testpypi
+
+# Git operations
+push:
+	@echo "Staging all changes..."
+	git add .
+	@read -p "Commit message: " message; \
+	git commit -m "$$message"
+	@echo "Pushing to remote..."
+	git push
 
 # Documentation
 docs:

@@ -25,13 +25,7 @@ def create_sample_pdf(output_path: str = "sample_document_enhanced.pdf"):
         producer="ReportLab",
     )
     
-    # Add more metadata after creation
-    doc.setTitle("Sample Document with Rich Metadata")
-    doc.setAuthor("PDF Processing Demo")
-    doc.setSubject("Demonstration of PDF Metadata and Content")
-    doc.setKeywords("pdf, metadata, demo, python")
-    doc.setCreator("PDF Generation Script")
-    doc.setProducer("ReportLab")
+    # Metadata is set in the constructor, no need to set it again
     
     # Create custom styles
     styles = getSampleStyleSheet()
