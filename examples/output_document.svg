@@ -1,0 +1,66 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="1100" viewBox="0 0 800 1100">
+  <title>PDF Document: sample_document.pdf</title>
+  <rect x="0" y="0" width="800" height="1100" fill="#f5f5f5"/>
+  <g transform="translate(20, 30)">
+    <text x="0" y="0" font-family="Arial" font-size="24" font-weight="bold">PDF to SVG Workflow Example</text>
+  </g>
+  <g transform="translate(20, 80)">
+    <text x="0" y="0" font-family="Arial" font-size="16" font-weight="bold">1. PDF Preview:</text>
+    <g transform="translate(0, 30)">
+      <rect x="0" y="0" width="760" height="500" fill="white" stroke="#ccc" rx="5" ry="5"/>
+      <foreignObject x="30" y="30" width="700" height="440">
+        <div xmlns="http://www.w3.org/1999/xhtml" style="width:100%; height:100%; overflow:hidden;">
+          <object data="data:application/pdf;base64,JVBERi0xLjQKMSAwIG9iago8PCAvVHlwZSAvQ2F0YWxvZwogICAvUGFnZXMgMiAwIFIKPj4KZW5kb2JqCgoyIDAgb2JqCjw8IC9UeXBlIC9QYWdlcwogICAvS2lkcyBbMyAwIFJdCiAgIC9Db3VudCAxCj4+CmVuZG9iagoKMyAwIG9iago8PCAvVHlwZSAvUGFnZQogICAvUGFyZW50IDIgMCBSCiAgIC9SZXNvdXJjZXMgPDwgL0ZvbnQgPDwgL0YxIDQgMCBSID4+ID4+CiAgIC9NZWRpYUJveCBbMCAwIDYxMiA3OTJdCiAgIC9Db250ZW50cyA1IDAgUgo+PgplbmRvYmoKCjQgMCBvYmoKPDwgL1R5cGUgL0ZvbnQKICAgL1N1YnR5cGUgL1R5cGUxCiAgIC9CYXNlRm9udCAvSGVsdmV0aWNhCj4+CmVuZG9iagoKNSAwIG9iago8PCAvTGVuZ3RoIDQ0ID4+CnN0cmVhbQpCVAovRjEgMjQgVGYKMTAwIDcwMCBUZAooSGVsbG8sIHRoaXMgaXMgYSB0ZXN0IFBERiBkb2N1bWVudCkgVGoKRVQKZW5kc3RyZWFtCmVuZG9iagoKeHJlZgowIDYKMDAwMDAwMDAwMCA2NTUzNSBmIAowMDAwMDAwMDE1IDAwMDAwIG4gCjAwMDAwMDAwNjkgMDAwMDAgbiAKMDAwMDAwMDEyMiAwMDAwMCBuIAowMDAwMDAwMjM2IDAwMDAwIG4gCjAwMDAwMDAxNzggMDAwMDAgbiAKdHJhaWxlcgo8PCAvU2l6ZSA2CiAgIC9Sb290IDEgMCBSCj4+CnN0YXJ0eHJlZgozMDAKJSVFT0YK" type="application/pdf" style="width:100%; height:100%; border: none;">
+            <p>Your browser does not support embedded PDFs. Please download the PDF to view it.</p>
+          </object>
+        </div>
+      </foreignObject>
+      <text x="0" y="490" font-family="Arial" font-size="10" fill="#666">Note: The PDF is embedded above. You can interact with it if your browser supports embedded PDFs.</text>
+    </g>
+  </g>
+  <g transform="translate(20, 600)">
+    <text x="0" y="0" font-family="Arial" font-size="16" font-weight="bold">2. Document Metadata:</text>
+    <text x="20" y="30" font-family="Arial" font-size="12" font-weight="bold">File:</text>
+    <text x="40" y="30" font-family="Courier New" font-size="10">sample_document.pdf</text>
+    <text x="20" y="54" font-family="Arial" font-size="12" font-weight="bold">File Size:</text>
+    <text x="40" y="54" font-family="Courier New" font-size="10">0.63 KB</text>
+    <text x="20" y="78" font-family="Arial" font-size="12" font-weight="bold">Created:</text>
+    <text x="40" y="78" font-family="Courier New" font-size="10">2025-06-29 15:22:42</text>
+    <text x="20" y="102" font-family="Arial" font-size="12" font-weight="bold">Modified:</text>
+    <text x="40" y="102" font-family="Courier New" font-size="10">2025-06-29 15:22:42</text>
+    <text x="20" y="126" font-family="Arial" font-size="12" font-weight="bold">Custom Metadata:</text>
+    <text x="40" y="126" font-family="Courier New" font-size="10">no</text>
+    <text x="20" y="150" font-family="Arial" font-size="12" font-weight="bold">Metadata Stream:</text>
+    <text x="40" y="150" font-family="Courier New" font-size="10">no</text>
+    <text x="20" y="174" font-family="Arial" font-size="12" font-weight="bold">Tagged:</text>
+    <text x="40" y="174" font-family="Courier New" font-size="10">no</text>
+    <text x="20" y="198" font-family="Arial" font-size="12" font-weight="bold">UserProperties:</text>
+    <text x="40" y="198" font-family="Courier New" font-size="10">no</text>
+    <text x="20" y="222" font-family="Arial" font-size="12" font-weight="bold">Suspects:</text>
+    <text x="40" y="222" font-family="Courier New" font-size="10">no</text>
+    <text x="20" y="246" font-family="Arial" font-size="12" font-weight="bold">Form:</text>
+    <text x="40" y="246" font-family="Courier New" font-size="10">none</text>
+    <text x="20" y="270" font-family="Arial" font-size="12" font-weight="bold">JavaScript:</text>
+    <text x="40" y="270" font-family="Courier New" font-size="10">no</text>
+    <text x="20" y="294" font-family="Arial" font-size="12" font-weight="bold">Pages:</text>
+    <text x="40" y="294" font-family="Courier New" font-size="10">1</text>
+    <text x="20" y="318" font-family="Arial" font-size="12" font-weight="bold">Encrypted:</text>
+    <text x="40" y="318" font-family="Courier New" font-size="10">no</text>
+    <text x="20" y="342" font-family="Arial" font-size="12" font-weight="bold">Page size:</text>
+    <text x="40" y="342" font-family="Courier New" font-size="10">612 x 792 pts (letter)</text>
+    <text x="20" y="366" font-family="Arial" font-size="12" font-weight="bold">Page rot:</text>
+    <text x="40" y="366" font-family="Courier New" font-size="10">0</text>
+    <text x="20" y="390" font-family="Arial" font-size="12" font-weight="bold">File size:</text>
+    <text x="40" y="390" font-family="Courier New" font-size="10">645 bytes</text>
+    <text x="20" y="414" font-family="Arial" font-size="12" font-weight="bold">Optimized:</text>
+    <text x="40" y="414" font-family="Courier New" font-size="10">no</text>
+    <text x="20" y="438" font-family="Arial" font-size="12" font-weight="bold">PDF version:</text>
+    <text x="40" y="438" font-family="Courier New" font-size="10">1.4</text>
+    <text x="20" y="462" font-family="Arial" font-size="12" font-weight="bold">Processing Date:</text>
+    <text x="40" y="462" font-family="Courier New" font-size="10">2025-06-29 15:23:25</text>
+    <text x="20" y="486" font-family="Arial" font-size="12" font-weight="bold">Processing Tool:</text>
+    <text x="40" y="486" font-family="Courier New" font-size="10">PDF to SVG Workflow Example</text>
+    <text x="0" y="530" font-family="Arial" font-size="16" font-weight="bold">3. Extracted Text:</text>
+  </g>
+</svg>

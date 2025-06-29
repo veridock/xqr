@@ -8,6 +8,7 @@ import re
 import sys
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple, Union
+from lxml import etree
 
 from xqr.commands import get_command_class
 from xqr.core.editor import FileEditor
@@ -688,20 +689,53 @@ class CLI:
 def parse_file_xpath(arg: str) -> Tuple[Path, str]:
     """Parse file path and XPath from argument in format 'file.svg//xpath'.
 
+    Supports various formats:
+    - file.svg//xpath
+    - file.xml//xpath
+    - file.json//xpath
+    - file.svg (returns //* for the entire document)
+    - file.svg//*[contains(@class, 'example')] (handles attribute predicates)
+    - file.svg//tag[@id='value'] (handles attribute predicates with values)
+
     Args:
-        arg: Input string in format 'file.svg//xpath' or 'file.svg'
+        arg: Input string containing file path and optional XPath
 
     Returns:
         Tuple of (file_path, xpath)
     """
+    # Handle empty or invalid input
+    if not arg or not isinstance(arg, str):
+        raise ValueError("Invalid input: argument must be a non-empty string")
+
+    # Default to matching all elements if no XPath is provided
+    default_xpath = '//*'
+    
+    # Check if the argument contains a double slash (//) which indicates an XPath
     if '//' in arg:
+        # Split on the first occurrence of // to separate file path from XPath
         file_part, xpath = arg.split('//', 1)
-        # Handle SVG namespace in XPath
-        if file_part.endswith(('.svg', '.svgx')):
+        
+        # Handle attribute selection (e.g., @class)
+        if xpath.startswith('@'):
+            # For attributes, we need to modify the XPath to select the parent element
+            # and append the attribute selection
+            xpath = f'//*[@{xpath[1:]}]'
+        # Clean up the XPath - ensure it starts with // if it's a path (not a function call)
+        elif not xpath.startswith(('//', 'contains(', 'starts-with(', 'text()')):
+            xpath = f'//{xpath}'
+            
+        # Handle special cases for SVG files
+        file_path = Path(file_part)
+        if file_path.suffix.lower() in ('.svg', '.svgx'):
             # Don't modify the XPath here - let prepare_xpath_for_svg handle it
-            pass
-        return Path(file_part), f'//{xpath}'
-    return Path(arg), '//*'
+            # Just ensure it's a valid XPath
+            if not xpath.startswith(('.', '//', '@', '(', 'contains', 'starts-with', 'text()', 'name()')):
+                xpath = f'//{xpath}'
+        
+        return file_path, xpath
+    
+    # If no XPath provided, return the default XPath
+    return Path(arg), default_xpath
 
 def is_jquery_syntax(arg: str) -> bool:
     """Check if the argument is in jQuery syntax.
@@ -717,70 +751,194 @@ def is_jquery_syntax(arg: str) -> bool:
 def handle_direct_operation(args: List[str]) -> bool:
     """Handle direct file/xpath operations.
     
+    This function processes direct operations in the format:
+    - file.xml//xpath [value]  # Read or update element
+    - file.xml//@attr [value]  # Read or update attribute
+    - file.xml//tag[@attr='value']  # Query with attribute predicate
+    - file.xml//*[contains(@class, 'value')]  # Query with function
+    
     Returns:
         bool: True if the operation was handled, False otherwise
     """
-    if not args or args[0].startswith('-'):
+    print(f"DEBUG: handle_direct_operation initial args: {args}", file=sys.stderr)
+    
+    if not args:
+        print("DEBUG: No arguments provided", file=sys.stderr)
         return False
         
-    # Skip if the argument is a valid subcommand (except 'get' which we want to handle specially)
-    valid_commands = ['load', 'query', 'set', 'save', 'create', 'ls', 'shell', 'examples', 'server']
-    if args[0] in valid_commands:
-        return False
+    # Special case for --version and --help
+    if '--version' in args:
+        print(f"XQR {__version__}")
+        return True
         
-    # Handle jQuery syntax
-    if is_jquery_syntax(' '.join(args)):
-        return False
-        
-    # Special handling for 'get' command
-    if args[0] == 'get' and len(args) > 1:
-        # Treat as direct operation with XPath
-        xpath = args[1]
-        file_path = get_current_file()
-        if not file_path:
-            print("❌ No file loaded. Use 'load' command first.")
-            return True
-            
-        try:
-            editor = FileEditor(file_path)
-            result = editor.get_element_text(xpath)
-            if result is not None:
-                print(result)
-            else:
-                print(f"❌ Element not found: {xpath}")
-            return True
-        except Exception as e:
-            print(f"❌ Error: {e}")
-            return True
-
+    if '--help' in args or '-h' in args:
+        print_help()
+        return True
+    
+    # Check if we have the --all flag
+    update_all = '--all' in args
+    if update_all:
+        args.remove('--all')
+        print(f"DEBUG: Found --all flag, removed from args. New args: {args}", file=sys.stderr)
+    else:
+        print("DEBUG: No --all flag found", file=sys.stderr)
+    
     try:
+        # Parse the file path and XPath
         file_path, xpath = parse_file_xpath(args[0])
         value = args[1] if len(args) > 1 else None
-
+        
+        print(f"DEBUG: Parsed file_path={file_path}, xpath={xpath}, value={value}", file=sys.stderr)
+        print(f"DEBUG: update_all={update_all}", file=sys.stderr)
+        
         if not file_path.exists():
             print(f"❌ File not found: {file_path}")
             return True
-
+        
+        # Create editor instance
         editor = FileEditor(file_path)
+        
+        # Check if we're dealing with an SVG file
+        is_svg = str(file_path).lower().endswith(('.svg', '.svgz'))
+        
+        # Check if this is an attribute operation (e.g., //element/@attr or @attr)
+        attribute_name = None
+        original_xpath = xpath  # Save original XPath for debugging
+        
+        # Handle attribute selection in XPath (e.g., //item/@class)
+        if '@' in xpath and '/@' in xpath and not xpath.endswith(']'):
+            # Extract the base XPath and attribute name
+            base_xpath, attr_part = xpath.rsplit('/@', 1)
+            attribute_name = attr_part.split('/')[0].split(']')[0]  # Get just the attribute name
+            xpath = base_xpath or '//*'  # Default to all elements if no specific path given
+            print(f"DEBUG: Extracted attribute name: {attribute_name} from XPath", file=sys.stderr)
+            print(f"DEBUG: Modified XPath from {original_xpath} to {xpath} for attribute {attribute_name}", file=sys.stderr)
+        # Handle simple attribute reference (e.g., @class)
+        elif xpath.startswith('@'):
+            attribute_name = xpath[1:].split('/')[0].split(']')[0]
+            xpath = '//*'  # Default to all elements
+            print(f"DEBUG: Using simple attribute reference: {attribute_name}", file=sys.stderr)
 
         # Handle delete operation (empty string as value)
         if value == '':
-            success = editor.set_element_text(xpath, '')
-            if success:
-                editor.save()
-                print(f"✅ Deleted content of {xpath} in {file_path}")
-            else:
+            elements = editor.find_by_xpath(xpath)
+            if not elements:
                 print(f"❌ Element not found: {xpath}")
+                return True
+                
+            # Delete each matching element's content or attribute
+            for element in elements:
+                if attribute_name:
+                    if hasattr(element, 'attrib') and attribute_name in element.attrib:
+                        del element.attrib[attribute_name]
+                else:
+                    if hasattr(element, 'text'):
+                        element.text = ''
+                    if hasattr(element, 'tail') and element.tail:
+                        element.tail = ''
+            
+            editor.save()
+            if attribute_name:
+                print(f"✅ Deleted @{attribute_name} from {xpath} in {file_path}")
+            else:
+                print(f"✅ Deleted content of {xpath} in {file_path}")
             return True
 
-        # Handle update/create operation
+        # Handle update operation
         if value is not None:
-            success = editor.set_element_text(xpath, value)
-            if success:
-                editor.save()
-                print(f"✅ Updated {xpath} in {file_path}")
+            print(f"DEBUG: Handling update operation with value: {value}", file=sys.stderr)
+            print(f"DEBUG: Original XPath: {xpath}", file=sys.stderr)
+            
+            # Handle attribute updates via @attribute syntax
+            if xpath.endswith('/@class'):
+                # For attribute updates, we want to modify the element, not the attribute directly
+                xpath = xpath[:-7]  # Remove '/@class' from the end
+                print(f"DEBUG: Modified XPath for attribute update: {xpath}", file=sys.stderr)
+                
+            elements = editor.find_by_xpath(xpath)
+            print(f"DEBUG: Found {len(elements)} elements matching xpath: {xpath}", file=sys.stderr)
+            if not elements:
+                print(f"❌ Element not found: {xpath}", file=sys.stderr)
+                return True
+            
+            # Check if we should update all matching elements or just the first one
+            elements_to_update = elements if update_all else [elements[0]]
+            print(f"DEBUG: update_all={update_all}, updating {len(elements_to_update)} of {len(elements)} elements", file=sys.stderr)
+            print(f"DEBUG: Elements to update: {[etree.tostring(e) for e in elements_to_update]}", file=sys.stderr)
+            
+            # Update each matching element
+            for element in elements_to_update:
+                # Handle attribute updates (attr=value or via @attr in XPath)
+                if attribute_name or ('=' in value and not xpath.endswith(']')):
+                    attr = attribute_name
+                    val = value
+                    
+                    # If not using @attr syntax, parse from value (e.g., 'class=new-class')
+                    if not attr and '=' in value:
+                        try:
+                            attr, val = value.split('=', 1)
+                            attr = attr.strip()
+                            val = val.strip('\'"').strip()
+                        except ValueError:
+                            print(f"❌ Invalid attribute format: {value}. Expected 'attr=value'")
+                            return False
+                    
+                    # If we still don't have an attribute name, we can't proceed
+                    if not attr:
+                        print(f"❌ No attribute specified for update in XPath: {original_xpath}", file=sys.stderr)
+                        return False
+                    
+                    print(f"DEBUG: Updating attribute - element: {etree.tostring(element)[:100]}..., attr: {attr}, val: {val}", file=sys.stderr)
+                    print(f"DEBUG: Element attributes before update: {getattr(element, 'attrib', {})}", file=sys.stderr)
+                    
+                    # Ensure we have an attribute to update
+                    if not attr:
+                        print("❌ No attribute specified for update", file=sys.stderr)
+                        return False
+                    
+                    # Handle different element types and update mechanisms
+                    updated = False
+                    
+                    # Method 1: Use set() method if available (lxml.etree)
+                    if hasattr(element, 'set'):
+                        print("DEBUG: Using element.set() method", file=sys.stderr)
+                        element.set(attr, val)
+                        updated = True
+                    # Method 2: Use attrib dictionary
+                    elif hasattr(element, 'attrib') and isinstance(element.attrib, dict):
+                        print("DEBUG: Using element.attrib dictionary", file=sys.stderr)
+                        element.attrib[attr] = val
+                        updated = True
+                    # Method 3: Try direct attribute access as last resort
+                    elif hasattr(element, attr):
+                        print("DEBUG: Using direct attribute access", file=sys.stderr)
+                        setattr(element, attr, val)
+                        updated = True
+                        
+                    if not updated:
+                        print(f"❌ Could not update attribute {attr}: element doesn't support attribute updates", file=sys.stderr)
+                        return False
+                        
+                    print(f"DEBUG: Element attributes after update: {getattr(element, 'attrib', {})}", file=sys.stderr)
+                        
+                    print(f"DEBUG: Element attributes after update: {getattr(element, 'attrib', {})}", file=sys.stderr)
+                # Handle text content updates
+                elif hasattr(element, 'text'):
+                    element.text = value
+                    
+            # If we're in interactive mode, show a hint about --all
+            if len(elements) > 1 and not update_all and sys.stdin.isatty():
+                print(f"ℹ️  Only updated first of {len(elements)} matches. Use --all to update all.")
+            
+            print(f"DEBUG: Saving changes to {file_path}", file=sys.stderr)
+            editor.save()
+            
+            if attribute_name:
+                msg = f"✅ Updated @{attribute_name} in {xpath} to '{value}' in {file_path}"
             else:
-                print(f"❌ Could not update {xpath} (element not found)")
+                msg = f"✅ Updated {xpath} in {file_path}"
+            print(f"DEBUG: {msg}", file=sys.stderr)
+            print(msg)
             return True
 
         # Handle read operation (no value provided)
@@ -789,15 +947,38 @@ def handle_direct_operation(args: List[str]) -> bool:
             print(f"❌ No elements found matching XPath: {xpath}")
         else:
             for i, element in enumerate(elements, 1):
-                if hasattr(element, 'text') and element.text and element.text.strip():
-                    print(f"{i}. {element.text.strip()}")
-                elif hasattr(element, 'tag'):
-                    print(f"{i}. <{element.tag}> (no text content)")
+                # Handle attributes directly if this is an attribute query
+                if attribute_name and hasattr(element, 'attrib') and attribute_name in element.attrib:
+                    print(f"{i}. {element.attrib[attribute_name]}")
+                    continue
+                    
+                # Handle elements with tags (SVG/XML)
+                if hasattr(element, 'tag'):
+                    tag = element.tag.split('}')[-1]  # Remove namespace if present
+                    attrs = ' '.join(f'{k}="{v}"' for k, v in element.attrib.items())
+                    attrs = f' {attrs}' if attrs else ''
+                    
+                    # Get text content if any
+                    text = ''
+                    if element.text and element.text.strip():
+                        text = f" - {element.text.strip()}"
+                    
+                    print(f"{i}. <{tag}{attrs}>{text}</{tag}>")
+                # Handle text nodes
+                elif hasattr(element, 'text'):
+                    print(f"{i}. {element.text}")
+                # Fallback to string representation
                 else:
-                    print(f"{i}. {str(element).strip()}")
+                    print(f"{i}. {element}")
+        
         return True
-
+        
     except Exception as e:
+        print(f"❌ Error: {e}", file=sys.stderr)
+        if '--debug' in sys.argv:
+            import traceback
+            traceback.print_exc()
+        return False
         print(f"❌ Error: {e}")
         return True
 

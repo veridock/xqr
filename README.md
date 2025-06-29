@@ -45,7 +45,71 @@ poetry shell
 pip install xqr
 ```
 
-## 🎯 Quick Start
+## 📖 Basic Usage
+
+### Command Structure
+
+XQR supports several ways to run commands:
+
+1. **Direct mode** (single command):
+   ```bash
+   xqr file.xml//xpath [value]
+   ```
+
+2. **Command mode** (subcommands):
+   ```bash
+   xqr query file.xml "//xpath"
+   xqr set file.xml "//xpath" "new value"
+   ```
+
+3. **Interactive shell** (for multiple operations):
+   ```bash
+   xqr shell file.xml
+   > query "//xpath"
+   > set "//xpath" "new value"
+   > save
+   > exit
+   ```
+
+### Querying Elements
+
+You can run the XQR CLI in several ways depending on your setup:
+
+#### From Poetry (recommended for development):
+```bash
+# Run a single command
+poetry run xqr --help
+
+# Or activate the environment first
+poetry shell
+xqr --help
+```
+
+#### From virtual environment:
+```bash
+# Activate your virtual environment first
+source /path/to/venv/bin/activate
+
+# Then run xqr
+xqr --help
+```
+
+#### Using Python module syntax (works without installation):
+```bash
+python -m xqr.cli --help
+```
+
+#### Install globally (not recommended for development):
+```bash
+# Install in development mode
+pip install -e .
+
+# Or install from PyPI
+pip install xqr
+
+# Then run from anywhere
+xqr --help
+```
 
 ### 1. Create Example Files
 ```bash
@@ -73,6 +137,8 @@ xqr load other_file.xml
 For quick operations, you can directly specify the file and XPath in one command:
 
 ```bash
+xqr example.svg//svg
+
 # Read element content
 xqr example.svg//text[@id='text1']
 

@@ -1,5 +1,426 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" width="200" height="100">del<rect width="200" height="100" fill="#f0f0f0"/>
-    <text x="100" y="50" font-family="Arial" font-size="16" text-anchor="middle" id="text1">Hello SVG</text>
-    <text x="100" y="80" font-family="Arial" font-size="12" text-anchor="middle" id="text2">New Text</text>
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="1200" height="800" viewBox="0 0 1200 800">
+
+  <!-- Metadane dokumentu w standardzie Dublin Core -->
+  <metadata>
+    <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:custom="http://example.com/custom/">
+      <rdf:Description>
+        <dc:title>Kontener Danych SVG - Sprzedaż Q1 2025</dc:title>
+        <dc:creator>Demo Application</dc:creator>
+        <dc:date>2025-06-28</dc:date>
+        <dc:format>image/svg+xml</dc:format>
+        <dc:description>Interaktywny kontener danych z wizualizacją i logiką</dc:description>
+        <custom:version>1.0</custom:version>
+        <custom:dataFormat>quarterly-sales</custom:dataFormat>
+      </rdf:Description>
+    </rdf:RDF>
+
+    <!-- Dane biznesowe w formacie JSON -->
+    <data-store>
+    {
+      "metadata": {
+        "title": "Dane sprzedażowe Q1 2025",
+        "version": "1.0",
+        "created": "2025-06-28",
+        "format": "quarterly-sales",
+        "currency": "PLN"
+      },
+      "data": [
+        {"month": "Styczeń", "sales": 150000, "region": "Północ", "color": "#3498db"},
+        {"month": "Luty", "sales": 180000, "region": "Północ", "color": "#3498db"},
+        {"month": "Marzec", "sales": 220000, "region": "Północ", "color": "#3498db"},
+        {"month": "Styczeń", "sales": 130000, "region": "Południe", "color": "#e74c3c"},
+        {"month": "Luty", "sales": 160000, "region": "Południe", "color": "#e74c3c"},
+        {"month": "Marzec", "sales": 190000, "region": "Południe", "color": "#e74c3c"}
+      ],
+      "config": {
+        "chartType": "bar",
+        "colors": {
+          "primary": "#667eea",
+          "secondary": "#764ba2",
+          "north": "#3498db",
+          "south": "#e74c3c"
+        }
+      }
+    }
+    </data-store>
+  </metadata>
+
+  <!-- Definicje stylów i gradientów -->
+  <defs>
+    <linearGradient id="backgroundGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#667eea;stop-opacity:1"/>
+      <stop offset="100%" style="stop-color:#764ba2;stop-opacity:1"/>
+    </linearGradient>
+
+    <linearGradient id="headerGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#4c63d2;stop-opacity:1"/>
+      <stop offset="100%" style="stop-color:#5a67d8;stop-opacity:1"/>
+    </linearGradient>
+
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="2" dy="4" stdDeviation="3" flood-opacity="0.3"/>
+    </filter>
+
+    <pattern id="gridPattern" patternUnits="userSpaceOnUse" width="20" height="20">
+      <path d="M 20 0 L 0 0 0 20" fill="none" stroke="#e0e0e0" stroke-width="0.5"/>
+    </pattern>
+  </defs>
+
+  <!-- Tło główne -->
+  <rect width="100%" height="100%" fill="url(#backgroundGradient)"/>
+
+  <!-- Kontener główny -->
+  <rect x="50" y="50" width="1100" height="700" fill="white" rx="15" ry="15" filter="url(#shadow)"/>
+
+  <!-- Nagłówek -->
+  <rect x="70" y="70" width="1060" height="80" fill="url(#headerGradient)" rx="10" ry="10"/>
+
+  <text x="600" y="105" text-anchor="middle" font-family="Arial, sans-serif" font-size="28" font-weight="bold" fill="white">📊 Universal Data Container</text>
+
+  <text x="600" y="130" text-anchor="middle" font-family="Arial, sans-serif" font-size="14" fill="white">
+    Dane + Metadane + Wizualizacja + Interakcja w jednym pliku SVG
+  </text>
+
+  <!-- Panel metadanych -->
+  <rect x="70" y="170" width="520" height="120" fill="#f8f9fa" stroke="#667eea" stroke-width="2" rx="8" ry="8"/>
+
+  <text x="90" y="195" font-family="Arial, sans-serif" font-size="16" font-weight="bold" fill="#333">
+    📋 Metadane dokumentu
+  </text>
+
+  <text x="90" y="220" font-family="Arial, sans-serif" font-size="12" fill="#666">
+    <tspan x="90" dy="0">Tytuł: Dane sprzedażowe Q1 2025</tspan>
+    <tspan x="90" dy="15">Wersja: 1.0 | Utworzono: 2025-06-28</tspan>
+    <tspan x="90" dy="15">Format: quarterly-sales | Waluta: PLN</tspan>
+    <tspan x="90" dy="15">Rekordów: 6 | Rozmiar: ~12KB</tspan>
+  </text>
+
+  <!-- Panel kontroli -->
+  <rect x="610" y="170" width="520" height="120" fill="#e8f4f8" stroke="#3498db" stroke-width="2" rx="8" ry="8"/>
+
+  <text x="630" y="195" font-family="Arial, sans-serif" font-size="16" font-weight="bold" fill="#333">
+    🎛️ Interaktywne kontrolki
+  </text>
+
+  <!-- Przyciski kontrolne -->
+  <g id="controls">
+    <!-- Przycisk Północ -->
+    <rect x="630" y="210" width="80" height="25" fill="#3498db" rx="5" ry="5" class="button" data-region="Północ" style="cursor:pointer">
+      <title>Pokaż dane dla regionu Północ</title>
+    </rect>
+    <text x="670" y="227" text-anchor="middle" font-family="Arial, sans-serif" font-size="36" fill="white" pointer-events="none">Północ</text>
+
+    <!-- Przycisk Południe -->
+    <rect x="720" y="210" width="80" height="25" fill="#e74c3c" rx="5" ry="5" class="button" data-region="Południe" style="cursor:pointer">
+      <title>Pokaż dane dla regionu Południe</title>
+    </rect>
+    <text x="760" y="227" text-anchor="middle" font-family="Arial, sans-serif" font-size="12" fill="white" pointer-events="none">Południe</text>
+
+    <!-- Przycisk Wszystkie -->
+    <rect x="810" y="210" width="80" height="25" fill="#667eea" rx="5" ry="5" class="button" data-region="all" style="cursor:pointer">
+      <title>Pokaż wszystkie dane</title>
+    </rect>
+    <text x="850" y="227" text-anchor="middle" font-family="Arial, sans-serif" font-size="12" fill="white" pointer-events="none">Wszystkie</text>
+
+    <!-- Przycisk Eksport -->
+    <rect x="900" y="210" width="80" height="25" fill="#27ae60" rx="5" ry="5" class="button" id="exportBtn" style="cursor:pointer">
+      <title>Eksportuj dane jako CSV</title>
+    </rect>
+    <text x="940" y="227" text-anchor="middle" font-family="Arial, sans-serif" font-size="12" fill="white" pointer-events="none">Eksport</text>
+
+    <!-- Przycisk Info -->
+    <rect x="990" y="210" width="80" height="25" fill="#8e44ad" rx="5" ry="5" class="button" id="infoBtn" style="cursor:pointer">
+      <title>Pokaż szczegółowe informacje</title>
+    </rect>
+    <text x="1030" y="227" text-anchor="middle" font-family="Arial, sans-serif" font-size="12" fill="white" pointer-events="none">Info</text>
+  </g>
+
+  <!-- Obszar wykresu -->
+  <rect x="70" y="310" width="1060" height="350" fill="url(#gridPattern)" stroke="#ddd" stroke-width="1" rx="8" ry="8"/>
+
+  <text x="600" y="340" text-anchor="middle" font-family="Arial, sans-serif" font-size="18" font-weight="bold" fill="#333">
+    📈 Wizualizacja sprzedaży
+  </text>
+
+  <!-- Osie wykresu -->
+  <line x1="120" y1="620" x2="1080" y2="620" stroke="#333" stroke-width="2"/>
+  <line x1="120" y1="620" x2="120" y2="360" stroke="#333" stroke-width="2"/>
+
+  <!-- Etykiety osi Y -->
+  <text x="110" y="625" text-anchor="end" font-family="Arial, sans-serif" font-size="12" fill="#666">0</text>
+  <text x="110" y="565" text-anchor="end" font-family="Arial, sans-serif" font-size="12" fill="#666">100k</text>
+  <text x="110" y="505" text-anchor="end" font-family="Arial, sans-serif" font-size="12" fill="#666">200k</text>
+  <text x="110" y="445" text-anchor="end" font-family="Arial, sans-serif" font-size="12" fill="#666">300k</text>
+  <text x="110" y="385" text-anchor="end" font-family="Arial, sans-serif" font-size="12" fill="#666">400k</text>
+
+  <!-- Grupa słupków wykresu -->
+  <g id="chartBars">
+    <!-- Styczeń Północ -->
+    <rect x="150" y="530" width="40" height="90" fill="#3498db" rx="3" ry="3" class="bar" data-month="Styczeń" data-region="Północ" data-value="150000" style="cursor:pointer" opacity="0.9">
+      <title>Styczeń, Północ: 150,000 PLN</title>
+    </rect>
+    <text x="170" y="650" text-anchor="middle" font-family="Arial, sans-serif" font-size="36" fill="#333">Sty N</text>
+
+    <!-- Luty Północ -->
+    <rect x="200" y="512" width="40" height="108" fill="#3498db" rx="3" ry="3" class="bar" data-month="Luty" data-region="Północ" data-value="180000" style="cursor:pointer" opacity="0.9">
+      <title>Luty, Północ: 180,000 PLN</title>
+    </rect>
+    <text x="220" y="650" text-anchor="middle" font-family="Arial, sans-serif" font-size="10" fill="#333">Lut N</text>
+
+    <!-- Marzec Północ -->
+    <rect x="250" y="488" width="40" height="132" fill="#3498db" rx="3" ry="3" class="bar" data-month="Marzec" data-region="Północ" data-value="220000" style="cursor:pointer" opacity="0.9">
+      <title>Marzec, Północ: 220,000 PLN</title>
+    </rect>
+    <text x="270" y="650" text-anchor="middle" font-family="Arial, sans-serif" font-size="10" fill="#333">Mar N</text>
+
+    <!-- Styczeń Południe -->
+    <rect x="320" y="542" width="40" height="78" fill="#e74c3c" rx="3" ry="3" class="bar" data-month="Styczeń" data-region="Południe" data-value="130000" style="cursor:pointer" opacity="0.9">
+      <title>Styczeń, Południe: 130,000 PLN</title>
+    </rect>
+    <text x="340" y="650" text-anchor="middle" font-family="Arial, sans-serif" font-size="10" fill="#333">Sty S</text>
+
+    <!-- Luty Południe -->
+    <rect x="370" y="524" width="40" height="96" fill="#e74c3c" rx="3" ry="3" class="bar" data-month="Luty" data-region="Południe" data-value="160000" style="cursor:pointer" opacity="0.9">
+      <title>Luty, Południe: 160,000 PLN</title>
+    </rect>
+    <text x="390" y="650" text-anchor="middle" font-family="Arial, sans-serif" font-size="10" fill="#333">Lut S</text>
+
+    <!-- Marzec Południe -->
+    <rect x="420" y="506" width="40" height="114" fill="#e74c3c" rx="3" ry="3" class="bar" data-month="Marzec" data-region="Południe" data-value="190000" style="cursor:pointer" opacity="0.9">
+      <title>Marzec, Południe: 190,000 PLN</title>
+    </rect>
+    <text x="440" y="650" text-anchor="middle" font-family="Arial, sans-serif" font-size="10" fill="#333">Mar S</text>
+  </g>
+
+  <!-- Panel statystyk -->
+  <rect x="500" y="360" width="550" height="250" fill="rgba(255,255,255,0.9)" stroke="#667eea" stroke-width="1" rx="8" ry="8"/>
+
+  <text x="520" y="385" font-family="Arial, sans-serif" font-size="16" font-weight="bold" fill="#333">
+    📊 Statystyki bieżące
+  </text>
+
+  <g id="statsDisplay">
+    <text x="520" y="410" font-family="Arial, sans-serif" font-size="36" fill="#666">
+      <tspan x="520" dy="0">Łączna sprzedaż: </tspan>
+      <tspan font-weight="bold" fill="#333">1,030,000 PLN</tspan>
+    </text>
+    <text x="520" y="430" font-family="Arial, sans-serif" font-size="14" fill="#666">
+      <tspan x="520" dy="0">Średnia miesięczna: </tspan>
+      <tspan font-weight="bold" fill="#333">171,667 PLN</tspan>
+    </text>
+    <text x="520" y="450" font-family="Arial, sans-serif" font-size="14" fill="#666">
+      <tspan x="520" dy="0">Najlepszy miesiąc: </tspan>
+      <tspan font-weight="bold" fill="#3498db">Marzec (Północ) - 220,000 PLN</tspan>
+    </text>
+    <text x="520" y="470" font-family="Arial, sans-serif" font-size="14" fill="#666">
+      <tspan x="520" dy="0">Regiony aktywne: </tspan>
+      <tspan font-weight="bold" fill="#333">2 (Północ, Południe)</tspan>
+    </text>
+
+    <!-- Mini wykres kołowy -->
+    <circle cx="780" cy="500" r="60" fill="none" stroke="#e0e0e0" stroke-width="2"/>
+    <path d="M 780 440 A 60 60 0 0 1 831 470 L 780 500 Z" fill="#3498db" opacity="0.8">
+      <title>Północ: 55%</title>
+    </path>
+    <path d="M 831 470 A 60 60 0 1 1 780 440 L 780 500 Z" fill="#e74c3c" opacity="0.8">
+      <title>Południe: 45%</title>
+    </path>
+    <text x="780" y="505" text-anchor="middle" font-family="Arial, sans-serif" font-size="12" font-weight="bold" fill="white">55% | 45%</text>
+
+    <!-- Legenda -->
+    <rect x="860" y="460" width="15" height="15" fill="#3498db"/>
+    <text x="880" y="472" font-family="Arial, sans-serif" font-size="12" fill="#333">Północ (55%)</text>
+    <rect x="860" y="480" width="15" height="15" fill="#e74c3c"/>
+    <text x="880" y="492" font-family="Arial, sans-serif" font-size="12" fill="#333">Południe (45%)</text>
+  </g>
+
+  <!-- Panel informacji o pliku -->
+  <rect x="70" y="680" width="1060" height="60" fill="#e8f4f8" stroke="#3498db" stroke-width="1" rx="8" ry="8"/>
+
+  <text x="90" y="705" font-family="Arial, sans-serif" font-size="14" font-weight="bold" fill="#333">
+    💾 Informacje o pliku SVG
+  </text>
+
+  <text x="90" y="725" font-family="Arial, sans-serif" font-size="12" fill="#666">
+    Ten plik SVG zawiera wszystko: dane (JSON), metadane (RDF), wizualizację i interaktywną logikę.
+    Można go otwierać w przeglądarce, edytorze graficznym lub systemie operacyjnym. Rozmiar: ~12KB | Format: SVG 1.1 | Kompatybilność: 100%
+  </text>
+
+  <!-- Skrypty JavaScript dla interaktywności -->
+  <script type="application/ecmascript">
+    // Globalne zmienne
+    let currentFilter = 'all';
+    let data = [];
+
+    // Inicjalizacja po załadowaniu SVG
+    function init() {
+      // Wczytaj dane z metadanych
+      const dataStore = document.querySelector('metadata data-store');
+      if (dataStore) {
+        const jsonData = JSON.parse(dataStore.textContent);
+        data = jsonData.data;
+      }
+
+      // Dodaj event listenery
+      setupEventListeners();
+      updateChart();
+    }
+
+    // Konfiguracja event listenerów
+    function setupEventListeners() {
+      // Przyciski filtrowania
+      const buttons = document.querySelectorAll('.button[data-region]');
+      buttons.forEach(button =&gt; {
+        button.addEventListener('click', function() {
+          currentFilter = this.getAttribute('data-region');
+          updateChart();
+          highlightButton(this);
+        });
+      });
+
+      // Przycisk eksportu
+      const exportBtn = document.getElementById('exportBtn');
+      if (exportBtn) {
+        exportBtn.addEventListener('click', exportData);
+      }
+
+      // Przycisk info
+      const infoBtn = document.getElementById('infoBtn');
+      if (infoBtn) {
+        infoBtn.addEventListener('click', showInfo);
+      }
+
+      // Interakcja ze słupkami
+      const bars = document.querySelectorAll('.bar');
+      bars.forEach(bar =&gt; {
+        bar.addEventListener('mouseenter', function() {
+          this.setAttribute('opacity', '1');
+          this.setAttribute('stroke', '#333');
+          this.setAttribute('stroke-width', '2');
+        });
+
+        bar.addEventListener('mouseleave', function() {
+          this.setAttribute('opacity', '0.9');
+          this.removeAttribute('stroke');
+          this.removeAttribute('stroke-width');
+        });
+
+        bar.addEventListener('click', function() {
+          const month = this.getAttribute('data-month');
+          const region = this.getAttribute('data-region');
+          const value = this.getAttribute('data-value');
+          alert(`Szczegóły:\nMiesiąc: ${month}\nRegion: ${region}\nSprzedaż: ${parseInt(value).toLocaleString()} PLN`);
+        });
+      });
+    }
+
+    // Aktualizacja wykresu na podstawie filtra
+    function updateChart() {
+      const bars = document.querySelectorAll('.bar');
+      let visibleData = data;
+
+      if (currentFilter !== 'all') {
+        visibleData = data.filter(item =&gt; item.region === currentFilter);
+      }
+
+      bars.forEach(bar =&gt; {
+        const region = bar.getAttribute('data-region');
+        if (currentFilter === 'all' || region === currentFilter) {
+          bar.style.display = 'block';
+          bar.setAttribute('opacity', '0.9');
+        } else {
+          bar.style.display = 'none';
+        }
+      });
+
+      updateStats(visibleData);
+    }
+
+    // Aktualizacja statystyk
+    function updateStats(visibleData) {
+      const total = visibleData.reduce((sum, item) =&gt; sum + item.sales, 0);
+      const avg = visibleData.length &gt; 0 ? total / visibleData.length : 0;
+      const maxItem = visibleData.reduce((max, item) =&gt;
+        item.sales &gt; max.sales ? item : max, visibleData[0] || {sales: 0});
+
+      const northTotal = visibleData.filter(item =&gt; item.region === 'Północ')
+        .reduce((sum, item) =&gt; sum + item.sales, 0);
+      const southTotal = visibleData.filter(item =&gt; item.region === 'Południe')
+        .reduce((sum, item) =&gt; sum + item.sales, 0);
+
+      const northPercent = total &gt; 0 ? Math.round((northTotal / total) * 100) : 0;
+      const southPercent = 100 - northPercent;
+
+      // Aktualizuj tekst statystyk
+      const statsDisplay = document.getElementById('statsDisplay');
+      if (statsDisplay) {
+        const texts = statsDisplay.querySelectorAll('text');
+        if (texts[0]) {
+          texts[0].innerHTML = `&lt;tspan x="520" dy="0"&gt;Łączna sprzedaż: &lt;/tspan&gt;&lt;tspan font-weight="bold" fill="#333"&gt;${total.toLocaleString()} PLN&lt;/tspan&gt;`;
+        }
+        if (texts[1]) {
+          texts[1].innerHTML = `&lt;tspan x="520" dy="0"&gt;Średnia miesięczna: &lt;/tspan&gt;&lt;tspan font-weight="bold" fill="#333"&gt;${Math.round(avg).toLocaleString()} PLN&lt;/tspan&gt;`;
+        }
+        if (texts[2] &amp;&amp; maxItem) {
+          texts[2].innerHTML = `&lt;tspan x="520" dy="0"&gt;Najlepszy miesiąc: &lt;/tspan&gt;&lt;tspan font-weight="bold" fill="#3498db"&gt;${maxItem.month} (${maxItem.region}) - ${maxItem.sales.toLocaleString()} PLN&lt;/tspan&gt;`;
+        }
+        if (texts[5]) {
+          texts[5].textContent = `${northPercent}% | ${southPercent}%`;
+        }
+      }
+    }
+
+    // Podświetlenie aktywnego przycisku
+    function highlightButton(activeButton) {
+      const buttons = document.querySelectorAll('.button[data-region]');
+      buttons.forEach(button =&gt; {
+        button.setAttribute('stroke', 'none');
+        button.setAttribute('stroke-width', '0');
+      });
+
+      activeButton.setAttribute('stroke', '#333');
+      activeButton.setAttribute('stroke-width', '3');
+    }
+
+    // Eksport danych
+    function exportData() {
+      const visibleData = currentFilter === 'all' ?
+        data :
+        data.filter(item =&gt; item.region === currentFilter);
+
+      let csv = 'Miesiąc,Sprzedaż,Region\n';
+      visibleData.forEach(item =&gt; {
+        csv += `${item.month},${item.sales},${item.region}\n`;
+      });
+
+      // Tworzenie linku do pobrania (symulacja)
+      alert(`Eksport CSV (${visibleData.length} rekordów):\n\n${csv}`);
+    }
+
+    // Pokaż informacje o dokumencie
+    function showInfo() {
+      const metadata = document.querySelector('metadata data-store');
+      const jsonData = JSON.parse(metadata.textContent);
+
+      alert(`Informacje o dokumencie SVG:
+
+Tytuł: ${jsonData.metadata.title}
+Wersja: ${jsonData.metadata.version}
+Data utworzenia: ${jsonData.metadata.created}
+Format danych: ${jsonData.metadata.format}
+Waluta: ${jsonData.metadata.currency}
+Liczba rekordów: ${jsonData.data.length}
+Rozmiar pliku: ~12KB
+Format: SVG 1.1 z osadzonymi danymi JSON
+Kompatybilność: Przeglądarki, edytory graficzne, systemy operacyjne`);
+    }
+
+    // Uruchom inicjalizację
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', init);
+    } else {
+      init();
+    }
+  </script>
 </svg>

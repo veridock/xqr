@@ -48,7 +48,113 @@ class TestCLI(TestCase):
         # Test with just file
         file_path, xpath = parse_file_xpath("file.svg")
         self.assertEqual(str(file_path), "file.svg")
-        self.assertEqual(xpath, "//*")
+        
+    def test_selective_update_single_element(self):
+        """Test that updates only affect the first matching element by default."""
+        # Create a test file with multiple matching elements
+        with open(self.test_file, 'w', encoding='utf-8') as f:
+            f.write("""<?xml version="1.0" encoding="UTF-8"?>
+            <root>
+                <item>Original 1</item>
+                <item>Original 2</item>
+                <item>Original 3</item>
+            </root>""")
+        
+        # Update only the first matching element
+        with mock.patch('sys.stdout', new_callable=StringIO) as mock_stdout:
+            # Combine file path and XPath with // separator as expected by handle_direct_operation
+            result = handle_direct_operation([f"{self.test_file}//item", "Updated Value"])
+            self.assertTrue(result)
+            
+        # Verify file content - only first element should be updated
+        editor = FileEditor(self.test_file)
+        elements = editor.find_by_xpath("//item")
+        self.assertEqual(len(elements), 3, "Should find 3 item elements")
+        self.assertEqual(elements[0].text, "Updated Value", "First element should be updated")
+        self.assertEqual(elements[1].text, "Original 2", "Second element should remain unchanged")
+        self.assertEqual(elements[2].text, "Original 3", "Third element should remain unchanged")
+        
+    def test_selective_update_all_elements(self):
+        """Test that --all flag updates all matching elements."""
+        # Create a test file with multiple matching elements
+        with open(self.test_file, 'w', encoding='utf-8') as f:
+            f.write("""<?xml version="1.0" encoding="UTF-8"?>
+            <root>
+                <item>Original 1</item>
+                <item>Original 2</item>
+                <item>Original 3</item>
+            </root>""")
+        
+        # Save original stderr and patch it to capture debug output
+        old_stderr = sys.stderr
+        debug_output = StringIO()
+        sys.stderr = debug_output
+        
+        try:
+            # Mock stdout for the function call
+            with mock.patch('sys.stdout', new_callable=StringIO) as mock_stdout:
+                # Call the function with --all flag
+                result = handle_direct_operation(["--all", f"{self.test_file}//item", "Updated Value"])
+                
+                # Get the debug output
+                debug_output_str = debug_output.getvalue()
+                print("\n=== DEBUG OUTPUT ===")
+                print(debug_output_str)
+                print("===================\n")
+                
+                # Get the stdout output
+                stdout_output = mock_stdout.getvalue()
+                print("\n=== STDOUT ===")
+                print(stdout_output)
+                print("==============\n")
+                
+                # Verify the function returned True
+                self.assertTrue(result, f"handle_direct_operation should return True but returned {result}")
+                
+                # Verify the file was actually updated
+                editor = FileEditor(self.test_file)
+                elements = editor.find_by_xpath("//item")
+                self.assertEqual(len(elements), 3, "Should find 3 item elements")
+                self.assertEqual(elements[0].text, "Updated Value", "First element should be updated")
+                self.assertEqual(elements[1].text, "Updated Value", "Second element should be updated")
+                self.assertEqual(elements[2].text, "Updated Value", "Third element should be updated")
+                
+        finally:
+            # Restore stderr
+            sys.stderr = old_stderr
+            
+        # Verify file content - all elements should be updated
+        editor = FileEditor(self.test_file)
+        elements = editor.find_by_xpath("//item")
+        self.assertEqual(len(elements), 3, "Should find 3 item elements")
+        self.assertEqual(elements[0].text, "Updated Value", "First element should be updated")
+        self.assertEqual(elements[1].text, "Updated Value", "Second element should be updated")
+        self.assertEqual(elements[2].text, "Updated Value", "Third element should be updated")
+        
+    def test_selective_update_attribute(self):
+        """Test selective update with attributes."""
+        # Create a test file with multiple matching elements
+        with open(self.test_file, 'w', encoding='utf-8') as f:
+            f.write("""<?xml version="1.0" encoding="UTF-8"?>
+            <root>
+                <item id="1" class="test">Item 1</item>
+                <item id="2" class="test">Item 2</item>
+                <item id="3" class="test">Item 3</item>
+            </root>""")
+        
+        # Update class attribute on first matching element only
+        with mock.patch('sys.stdout', new_callable=StringIO) as mock_stdout:
+            # Combine file path and XPath with // separator for attribute update
+            result = handle_direct_operation([f"{self.test_file}//item[@class='test']/@class", "updated"])
+            self.assertTrue(result)
+            
+        # Verify file content - only first element's class should be updated
+        editor = FileEditor(self.test_file)
+        elements = editor.find_by_xpath("//item")
+        self.assertEqual(len(elements), 3, "Should find 3 item elements")
+        self.assertEqual(elements[0].get("class"), "updated", "First element's class should be updated")
+        self.assertEqual(elements[1].get("class"), "test", "Second element's class should remain unchanged")
+        self.assertEqual(elements[2].get("class"), "test", "Third element's class should remain unchanged")
 
     @mock.patch('sys.stdout', new_callable=StringIO)
     def test_handle_direct_operation_read(self, mock_stdout):

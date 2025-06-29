@@ -2,6 +2,7 @@
 venv
 poetry.lock
 pyproject.toml.bak
+venv311
 # Python
 __pycache__/
 *.py[cod]

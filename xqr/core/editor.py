@@ -105,6 +105,47 @@ class FileEditor:
             Attribute value, or empty string if not found
         """
         return operations.get_element_attribute(self.tree, xpath, attr_name, self.file_type)
+        
+    def get_element_html(self, xpath: str) -> str:
+        """Get the HTML content of the first element matching the XPath.
+        
+        Args:
+            xpath: XPath expression to find the element
+            
+        Returns:
+            HTML content of the element as a string, or empty string if not found
+        """
+        elements = self.find_by_xpath(xpath)
+        if not elements:
+            return ""
+            
+        element = elements[0]
+        
+        try:
+            # Try lxml first if available
+            try:
+                from lxml import etree
+                return etree.tostring(
+                    element,
+                    encoding='unicode',
+                    method='html' if self.file_type == 'html' else 'xml',
+                    pretty_print=True
+                ).strip()
+            except ImportError:
+                # Fall back to ElementTree
+                from xml.etree import ElementTree as ET
+                from xml.dom import minidom
+                
+                # Convert element to string
+                xml_str = ET.tostring(element, encoding='unicode')
+                
+                # Pretty print the XML
+                dom = minidom.parseString(xml_str)
+                return dom.toprettyxml(indent="  ").strip()
+                
+        except Exception as e:
+            # If any error occurs during serialization, return the string representation
+            return str(element) if element is not None else ""
 
     def set_element_text(self, xpath: str, new_text: str) -> bool:
         """Set the text content of the first element matching the XPath.
@@ -250,20 +291,22 @@ class FileEditor:
         except Exception as e:
             raise IOError(f"Error saving file {save_path}: {e}")
 
-    def backup(self, suffix: str = ".bak") -> bool:
+    def backup(self, suffix: str = ".bak") -> str:
         """Create a backup of the original file.
         
         Args:
             suffix: Suffix to append to the backup filename
             
         Returns:
-            True if the backup was created successfully, False otherwise
+            Path to the created backup file
+            
+        Raises:
+            IOError: If the backup could not be created
         """
         backup_path = self.file_path.with_suffix(self.file_path.suffix + suffix)
         try:
             import shutil
             shutil.copy2(self.file_path, backup_path)
-            return True
+            return str(backup_path)
         except Exception as e:
-            print(f"Warning: Could not create backup: {e}")
-            return False
+            raise IOError(f"Could not create backup: {e}")

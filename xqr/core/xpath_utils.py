@@ -115,8 +115,47 @@ def find_elements_by_xpath(tree: Any, xpath: str, file_type: str = 'xml') -> Lis
         List of matching elements
         
     Raises:
-        ValueError: If the XPath expression is invalid
+        ValueError: If the XPath expression is invalid or empty
     """
+    if not xpath or not xpath.strip():
+        raise ValueError("XPath expression cannot be empty")
+        
+    # Basic XPath syntax validation - check for common syntax errors
+    stack = []
+    in_quotes = False
+    quote_char = None
+    
+    for i, char in enumerate(xpath):
+        if char in ("'", '"') and (i == 0 or xpath[i-1] != '\\'):
+            if not in_quotes:
+                in_quotes = True
+                quote_char = char
+            elif char == quote_char:
+                in_quotes = False
+                quote_char = None
+        elif not in_quotes:
+            if char in ('[', '(', '{'):
+                stack.append(char)
+            elif char in (']', ')', '}'):
+                if not stack:
+                    raise ValueError(f"Unmatched '{char}' at position {i} in XPath expression")
+                last = stack.pop()
+                if (char == ']' and last != '[') or \
+                   (char == ')' and last != '(') or \
+                   (char == '}' and last != '{'):
+                    raise ValueError(f"Mismatched '{last}' and '{char}' in XPath expression")
+    
+    if in_quotes:
+        raise ValueError("Unclosed string literal in XPath expression")
+    if stack:
+        raise ValueError(f"Unmatched '{stack[-1]}' in XPath expression")
+    
+    # Check for common XPath syntax errors
+    if '//' in xpath and '//.' in xpath:
+        raise ValueError("Invalid XPath expression: '//.' is not a valid XPath step")
+    if ']]' in xpath and ']]>' not in xpath:  # Allow ]]> as it's valid in XPath 2.0+
+        raise ValueError("Invalid XPath expression: ']]' is not valid outside of CDATA")
+    
     try:
         # Handle SVG namespace
         if file_type == 'svg':
@@ -124,10 +163,22 @@ def find_elements_by_xpath(tree: Any, xpath: str, file_type: str = 'xml') -> Lis
         else:
             namespaces = {}
             
-        return tree.xpath(xpath, namespaces=namespaces)
+        # Test the XPath expression with a simple evaluation first
+        # This helps catch syntax errors that our validation might miss
+        test_result = tree.xpath('count(//*)')  # Simple XPath that should work on any XML/HTML
+        if test_result is None:
+            raise ValueError("Failed to evaluate simple XPath expression")
+            
+        # Now try the actual XPath
+        result = tree.xpath(xpath, namespaces=namespaces)
+        return result
         
     except Exception as e:
-        raise ValueError(f"Invalid XPath expression '{xpath}': {e}")
+        # Try to provide a more specific error message for common issues
+        error_msg = str(e).lower()
+        if 'xpath' in error_msg and ('invalid' in error_msg or 'syntax' in error_msg):
+            raise ValueError(f"Invalid XPath expression: {xpath}") from e
+        raise ValueError(f"Error evaluating XPath expression '{xpath}': {e}")
 
 
 def find_elements_by_css(tree: Any, css_selector: str, content: str) -> List[Any]:
