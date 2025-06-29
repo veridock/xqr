@@ -90,15 +90,15 @@ dev-setup: install-dev examples
 
 # Build and Distribution
 clean:
-	rm -rf dist/
-	rm -rf build/
-	rm -rf *.egg-info/
-	rm -rf .coverage
-	rm -rf htmlcov/
-	rm -rf .pytest_cache/
-	rm -rf .mypy_cache/
-	find . -type d -name __pycache__ -delete
-	find . -type f -name "*.pyc" -delete
+	rm -rf dist/ || true
+	rm -rf build/ || true
+	rm -rf *.egg-info/ || true
+	rm -f .coverage || true
+	rm -rf htmlcov/ || true
+	rm -rf .pytest_cache/ || true
+	rm -rf .mypy_cache/ || true
+	find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
+	find . -type f -name "*.pyc" -delete 2>/dev/null || true
 
 build: clean
 	poetry build
