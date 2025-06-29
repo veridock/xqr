@@ -2,15 +2,16 @@
 Command Line Interface for the Universal File Editor
 """
 
-from typing import List, Tuple
+from typing import List, Optional, Type, Dict, Any
 from pathlib import Path
 import sys
 import re
 import argparse
-from xqr.core import FileEditor, create_example_files
+import importlib
+from xqr.core.editor import FileEditor
 from xqr.state import get_current_file, set_current_file
-from xqr.server import start_server
 from xqr.jquery_syntax import process_jquery_syntax
+from xqr.commands import get_command_class
 
 
 class CLI:
@@ -19,6 +20,24 @@ class CLI:
     def __init__(self):
         self.editor = None
         self._load_state()
+        self.commands: Dict[str, Type[Any]] = {}
+        self._load_commands()
+    
+    def _load_commands(self) -> None:
+        """Load all available commands."""
+        # Import all command modules to register them
+        from xqr import commands  # noqa: F401
+        
+        # Initialize commands
+        self.commands = {}
+        for cmd_name in [
+            'load', 'query', 'get', 'set', 'save', 
+            'create', 'ls', 'shell', 'examples', 'server'
+        ]:
+            try:
+                self.commands[cmd_name] = get_command_class(cmd_name)
+            except KeyError:
+                print(f"⚠️  Failed to load command: {cmd_name}")
         
     def _load_state(self) -> None:
         """Load state and initialize editor if a file was previously loaded."""
@@ -34,20 +53,46 @@ class CLI:
 
     def _create_parser(self) -> argparse.ArgumentParser:
         """Create and configure the argument parser."""
-        parser = argparse.ArgumentParser(description='XQR - XPath Query & Replace')
-        subparsers = parser.add_subparsers(dest='command', help='Command to run')
-
-        # Load command
-        load_parser = subparsers.add_parser('load', help='Load a file')
-        load_parser.add_argument('file', help='File to load')
-        load_parser.set_defaults(func=self._handle_load)
-
-        # Query command (alias: get)
-        query_parser = subparsers.add_parser('query', help='Query elements using XPath (alias: get)')
-        query_parser.add_argument('xpath', help='XPath expression')
-        query_parser.set_defaults(func=self._handle_query)
+        parser = argparse.ArgumentParser(
+            description='XQR - XPath Query & Replace',
+            add_help=False  # We'll handle help manually
+        )
         
-        # Alias 'get' to 'query'
+        # Add global arguments
+        parser.add_argument(
+            '--help', '-h', 
+            action='store_true',
+            help='Show this help message and exit'
+        )
+        
+        # Add version
+        parser.add_argument(
+            '--version', '-v',
+            action='store_true',
+            help='Show version and exit'
+        )
+        
+        subparsers = parser.add_subparsers(
+            dest='command', 
+            help='Command to run',
+            metavar='command'
+        )
+        
+        # Add commands to the parser
+        for cmd_name, cmd_class in self.commands.items():
+            # Skip aliases (they'll be handled by the main command)
+            if cmd_name in ['get']:  # 'get' is an alias for 'query'
+                continue
+                
+            cmd_parser = subparsers.add_parser(
+                cmd_name,
+                help=cmd_class.help,
+                add_help=False
+            )
+            cmd_class.add_arguments(cmd_parser)
+            cmd_parser.set_defaults(func=cmd_class.execute)
+        
+        return parser
         get_parser = subparsers.add_parser('get', help='Alias for query')
         get_parser.add_argument('xpath', help='XPath expression')
         get_parser.set_defaults(func=self._handle_query)
@@ -119,16 +164,77 @@ class CLI:
 
         return parser
 
-    def run(self) -> None:
-        """Run the CLI application."""
-        parser = self._create_parser()
-        args = parser.parse_args()
+    def _print_help(self, parser: argparse.ArgumentParser) -> None:
+        """Print help message."""
+        print("XQR - XPath Query & Replace")
+        print("Usage: xqr [OPTIONS] COMMAND [ARGS]...\n")
+        print("Options:")
+        print("  -h, --help     Show this message and exit")
+        print("  -v, --version  Show version and exit\n")
+        print("Commands:")
+        
+        # Get command help text
+        for cmd_name, cmd_class in sorted(self.commands.items()):
+            # Skip aliases
+            if cmd_name in ['get']:  # 'get' is an alias for 'query'
+                continue
+            print(f"  {cmd_name:<10} {cmd_class.help}")
+        
+        print("\nRun 'xqr COMMAND --help' for more information on a command.")
+        print("\nExamples:")
+        print("  xqr load example.html           # Load a file")
+        print("  xqr query \"//h1\"               # Query elements")
+        print("  xqr example.html//h1           # Query directly from file")
+        print("  xqr shell                      # Start interactive shell")
 
+    def run(self) -> int:
+        """Run the CLI.
+        
+        Returns:
+            int: Exit code (0 for success, non-zero for error)
+        """
+        parser = self._create_parser()
+        
+        # Parse known args first to handle help/version flags
+        args, remaining = parser.parse_known_args()
+        
+        # Handle help flag
+        if getattr(args, 'help', False):
+            self._print_help(parser)
+            return 0
+            
+        # Handle version flag
+        if getattr(args, 'version', False):
+            from xqr import __version__
+            print(f"XQR v{__version__}")
+            return 0
+        
+        # Handle direct file/xpath operation
+        if remaining and not args.command:
+            if handle_direct_operation(remaining):
+                return 0
+        
+        # Handle jQuery syntax
+        if remaining and any('$(' in arg for arg in remaining):
+            command = ' '.join(remaining)
+            if is_jquery_syntax(command):
+                process_jquery_syntax(command, self.editor)
+                return 0
+        
+        # If we have a command, execute it
         if hasattr(args, 'func'):
-            args.func(args)
-        else:
-            parser.print_help()
-            sys.exit(1)
+            # For commands that require an editor, pass it along
+            if args.command in self.commands and self.commands[args.command].requires_editor:
+                if not self.editor:
+                    print("❌ No file loaded. Use 'load' command first.")
+                    return 1
+                return args.func(args, self.editor) or 0
+            else:
+                return args.func(args, self.editor) or 0
+        
+        # No command and no direct operation, show help
+        self._print_help(parser)
+        return 0
 
     def _handle_load(self, args: argparse.Namespace) -> None:
         """Handle load command.
@@ -150,15 +256,30 @@ class CLI:
             print("❌ No file loaded. Use 'load' command first.")
             return
 
-        if args.type == 'text':
-            result = self.editor.get_element_text(args.xpath)
-            print(f"Text: {result}")
-        elif args.type == 'html':
-            result = self.editor.get_element_html(args.xpath)
-            print(f"HTML: {result}")
-        elif args.type == 'xml':
-            result = self.editor.get_element_xml(args.xpath)
-            print(f"XML: {result}")
+        # Default to 'text' if type is not provided
+        result_type = getattr(args, 'type', 'text')
+        
+        try:
+            if result_type == 'text':
+                result = self.editor.get_element_text(args.xpath)
+                if result is not None:
+                    print(result)
+                else:
+                    print(f"❌ No text content found for XPath: {args.xpath}")
+            elif result_type == 'html':
+                result = self.editor.get_element_html(args.xpath)
+                if result:
+                    print(result)
+                else:
+                    print(f"❌ No HTML content found for XPath: {args.xpath}")
+            elif result_type == 'xml':
+                result = self.editor.get_element_xml(args.xpath)
+                if result:
+                    print(result)
+                else:
+                    print(f"❌ No XML content found for XPath: {args.xpath}")
+        except Exception as e:
+            print(f"❌ Error executing query: {e}")
 
     def _handle_set(self, args: argparse.Namespace) -> None:
         """Handle set command.

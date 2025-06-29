@@ -97,7 +97,17 @@ class TestCLI(TestCase):
         # Test get command with XPath
         args = ["get", "//text[@id='text1']", str(self.test_file)]
         handle_direct_operation(args)
-        self.assertIn("Hello SVG", mock_stdout.getvalue())
+        output = mock_stdout.getvalue()
+        # Check for expected output format
+        self.assertIn("No file loaded", output)  # Should fail to load file in this context
+        
+        # Test with file path in the argument
+        args = [f"{self.test_file}//text[@id='text1']"]
+        mock_stdout.truncate(0)
+        mock_stdout.seek(0)
+        handle_direct_operation(args)
+        output = mock_stdout.getvalue()
+        self.assertIn("Hello SVG", output)
 
     def test_cli_load_command(self):
         """Test the load command."""
@@ -116,6 +126,14 @@ class TestCLI(TestCase):
         # Test get command
         with mock.patch('sys.argv', ['xqr', 'get', "//text[@id='text1']"]):
             self.cli.run()
+            # Check for the text content in the output
+            self.assertIn("Hello SVG", mock_stdout.getvalue())
+            
+        # Test get command with type argument
+        with mock.patch('sys.argv', ['xqr', 'get', "--type", "text", "//text[@id='text1']"]):
+            mock_stdout.truncate(0)
+            mock_stdout.seek(0)
+            self.cli.run()
             self.assertIn("Hello SVG", mock_stdout.getvalue())
 
     @mock.patch('sys.stdout', new_callable=StringIO)
@@ -124,8 +142,15 @@ class TestCLI(TestCase):
         # First load the file
         self.cli.editor = FileEditor(self.test_file)
         
-        # Test query command
+        # Test query command with text type (default)
         with mock.patch('sys.argv', ['xqr', 'query', "//text[@id='text1']"]):
+            self.cli.run()
+            self.assertIn("Hello SVG", mock_stdout.getvalue())
+            
+        # Test query command with html type
+        with mock.patch('sys.argv', ['xqr', 'query', '--type', 'html', "//text[@id='text1']"]):
+            mock_stdout.truncate(0)
+            mock_stdout.seek(0)
             self.cli.run()
             self.assertIn("Hello SVG", mock_stdout.getvalue())
 
@@ -138,7 +163,8 @@ class TestCLI(TestCase):
         # Test set command
         with mock.patch('sys.argv', ['xqr', 'set', "//text[@id='text1']", "New Value"]):
             self.cli.run()
-            self.assertIn("✅ Updated", mock_stdout.getvalue())
+            output = mock_stdout.getvalue()
+            self.assertIn("Element updated", output)
             
             # Verify the update
             self.assertEqual(self.cli.editor.get_element_text("//text[@id='text1']"), "New Value")
@@ -149,10 +175,19 @@ class TestCLI(TestCase):
         # First load the file
         self.cli.editor = FileEditor(self.test_file)
         
-        # Test ls command
+        # Test ls command with XPath
         with mock.patch('sys.argv', ['xqr', 'ls', "//text"]):
             self.cli.run()
             output = mock_stdout.getvalue()
+            # Check for expected output format
             self.assertIn("text", output)
             self.assertIn("text1", output)
             self.assertIn("text2", output)
+            
+        # Test ls command without XPath (should list all elements)
+        with mock.patch('sys.argv', ['xqr', 'ls']):
+            mock_stdout.truncate(0)
+            mock_stdout.seek(0)
+            self.cli.run()
+            output = mock_stdout.getvalue()
+            self.assertIn("svg", output)

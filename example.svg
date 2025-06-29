@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" width="200" height="100">ls<rect width="200" height="100" fill="#f0f0f0"/>
-  <text x="100" y="50" font-family="Arial" font-size="16" text-anchor="middle" id="text1">Hello SVG</text>
-  <text x="100" y="80" font-family="Arial" font-size="12" text-anchor="middle" id="text2">Edit me!</text>
+<svg xmlns="http://www.w3.org/2000/svg" width="200" height="100">del<rect width="200" height="100" fill="#f0f0f0"/>
+    <text x="100" y="50" font-family="Arial" font-size="16" text-anchor="middle" id="text1">Hello SVG</text>
+    <text x="100" y="80" font-family="Arial" font-size="12" text-anchor="middle" id="text2">New Text</text>
 </svg>
