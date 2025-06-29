@@ -657,18 +657,17 @@ def handle_direct_operation(args: List[str]) -> bool:
             return True
 
         # Handle read operation (no value provided)
-        try:
-            elements = editor.find_by_xpath(xpath)
-            if not elements:
-                print(f"❌ No elements found matching XPath: {xpath}")
-            else:
-                for i, element in enumerate(elements, 1):
-                    if hasattr(element, 'text') and element.text and element.text.strip():
-                        print(f"{i}. {element.text.strip()}")
-                    elif hasattr(element, 'tag'):
-                        print(f"{i}. <{element.tag}> (no text content)")
-                    else:
-                        print(f"{i}. {str(element).strip()}")
+        elements = editor.find_by_xpath(xpath)
+        if not elements:
+            print(f"❌ No elements found matching XPath: {xpath}")
+        else:
+            for i, element in enumerate(elements, 1):
+                if hasattr(element, 'text') and element.text and element.text.strip():
+                    print(f"{i}. {element.text.strip()}")
+                elif hasattr(element, 'tag'):
+                    print(f"{i}. <{element.tag}> (no text content)")
+                else:
+                    print(f"{i}. {str(element).strip()}")
         return True
 
     except Exception as e:
