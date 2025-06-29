@@ -698,15 +698,8 @@ def parse_file_xpath(arg: str) -> Tuple[Path, str]:
         file_part, xpath = arg.split('//', 1)
         # Handle SVG namespace in XPath
         if file_part.endswith(('.svg', '.svgx')):
-            # Handle SVG namespace for elements and attributes
-            xpath = xpath.replace("@id=", "@*[local-name()='id']=")
-            xpath = xpath.replace("text(", "*[local-name()='text'](")
-            # Handle SVG elements
-            xpath = xpath.replace("text", "*[local-name()='text']")
-            xpath = xpath.replace("tspan", "*[local-name()='tspan']")
-            xpath = xpath.replace("rect", "*[local-name()='rect']")
-            xpath = xpath.replace("circle", "*[local-name()='circle']")
-            xpath = xpath.replace("path", "*[local-name()='path']")
+            # Don't modify the XPath here - let prepare_xpath_for_svg handle it
+            pass
         return Path(file_part), f'//{xpath}'
     return Path(arg), '//*'
 
