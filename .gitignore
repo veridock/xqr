@@ -1,6 +1,7 @@
 .idea
 venv
 poetry.lock
+pyproject.toml.bak
 # Python
 __pycache__/
 *.py[cod]

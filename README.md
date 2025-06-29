@@ -1,8 +1,16 @@
-# xqr
-xpath xquery xqr
-# 🛠️ Universal File Editor
+# 🛠️ XQR - XPath Query & Replace
 
 Powerful CLI tool for editing SVG, HTML, and XML files using XPath and CSS selectors. Edit your structured documents directly from the command line or through a web interface.
+
+## 🎯 What is XQR?
+
+**XQR** (XPath Query & Replace) is a universal file editor that treats SVG, HTML, and XML as structured data containers. Use familiar XPath expressions and CSS selectors to query, modify, and manipulate content without specialized applications.
+
+Perfect for:
+- **Data Engineers** - batch processing XML/SVG files
+- **DevOps** - configuration management and automation
+- **Web Developers** - HTML content manipulation
+- **Designers** - SVG batch editing and metadata management
 
 ## 🚀 Features
 
@@ -20,8 +28,8 @@ Powerful CLI tool for editing SVG, HTML, and XML files using XPath and CSS selec
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/universal-file-editor.git
-cd universal-file-editor
+git clone https://github.com/veridock/xqr.git
+cd xqr
 
 # Install with Poetry
 poetry install
@@ -33,30 +41,30 @@ poetry shell
 ### Using pip
 
 ```bash
-pip install universal-file-editor
+pip install xqr
 ```
 
 ## 🎯 Quick Start
 
 ### 1. Create Example Files
 ```bash
-file-editor examples
+xqr examples
 ```
 
 ### 2. Basic Usage
 ```bash
 # Load and query a file
-file-editor load example.svg
-file-editor query "//text[@id='text1']"
+xqr load example.svg
+xqr query "//text[@id='text1']"
 
 # Update content
-file-editor set "//text[@id='text1']" "New Content"
-file-editor save
+xqr set "//text[@id='text1']" "New Content"
+xqr save
 ```
 
 ### 3. Interactive Shell
 ```bash
-file-editor shell
+xqr shell
 📝 > load example.html
 📝 > query //title
 📝 > set //title "Updated Title"
@@ -66,78 +74,114 @@ file-editor shell
 
 ### 4. Web Interface
 ```bash
-file-editor server --port 8080
+xqr server --port 8080
 # Open http://localhost:8080 in your browser
 ```
 
 ## 📖 Usage Examples
 
-### SVG Files
+### SVG Files - Update Charts & Graphics
 ```bash
-# Update text elements
-file-editor set "//text[@id='title']" "New Chart Title"
+# Update chart title
+xqr set "//text[@id='title']" "Q4 Sales Results"
 
-# Change colors
-file-editor set "//rect[@id='bar1']" "blue" --type attribute --attr fill
+# Change visualization colors
+xqr set "//rect[@id='bar1']" "blue" --type attribute --attr fill
 
-# Update metadata
-file-editor set "//metadata/description" "Updated chart description"
+# Update metadata for better organization
+xqr set "//metadata/description" "Updated quarterly sales chart"
+
+# Batch update multiple SVG files
+for file in charts/*.svg; do
+    xqr load "$file"
+    xqr set "//metadata/updated" "$(date)"
+    xqr save
+done
 ```
 
-### HTML Files
+### HTML Files - Content Management
 ```bash
-# Update page title
-file-editor set "//title" "New Page Title"
+# Update page titles across multiple pages
+xqr set "//title" "New Site Title"
 
-# Change meta description
-file-editor set "//meta[@name='description']" "New description" --type attribute --attr content
+# Change meta descriptions for SEO
+xqr set "//meta[@name='description']" "Updated SEO description" --type attribute --attr content
 
-# Update content by CSS selector (in shell mode)
-query #main-heading
-set #main-heading "Welcome to Our Site"
+# Update navigation links
+xqr set "//nav//a[@href='/old-page']" "/new-page" --type attribute --attr href
+
+# CSS selector support in shell mode
+xqr shell
+📝 > load index.html
+📝 > query #main-heading
+📝 > set #main-heading "Welcome to Our New Site"
 ```
 
-### XML Data Files
+### XML Data Files - Configuration & Data
 ```bash
 # Update configuration values
-file-editor set "//setting[@name='timeout']" "60" --type attribute --attr value
+xqr set "//config/timeout" "60" --type attribute --attr value
 
 # Modify data records
-file-editor set "//record[@id='1']/email" "newemail@example.com"
+xqr set "//record[@id='1']/email" "newemail@example.com"
 
-# Update metadata
-file-editor set "//metadata/version" "2.0"
+# Update version information
+xqr set "//metadata/version" "2.0"
+
+# Batch configuration updates
+find /etc/configs -name "*.xml" -exec xqr load {} \; \
+    -exec xqr set "//config/debug" "false" \; \
+    -exec xqr save {} \;
 ```
 
 ## 🔧 Advanced Features
 
-### Batch Processing
+### Batch Processing Scripts
 ```bash
 #!/bin/bash
-# Update multiple files
-for file in *.svg; do
-    file-editor load "$file"
-    file-editor set "//metadata/updated" "$(date)"
-    file-editor save
+# Update copyright year across all HTML files
+for file in **/*.html; do
+    echo "Processing $file..."
+    xqr load "$file"
+    xqr set "//span[@class='copyright-year']" "2025"
+    xqr save
+done
+
+# Update SVG chart data
+#!/bin/bash
+# Replace old data with new values
+for chart in reports/*.svg; do
+    xqr load "$chart"
+    xqr set "//metadata/data-source" "Q1-2025-data.json"
+    xqr set "//text[@class='last-updated']" "$(date '+%Y-%m-%d')"
+    xqr save
 done
 ```
 
-### REST API Usage
+### REST API Integration
 ```bash
-# Load file
+# Start server
+xqr server --port 8080
+
+# Load file via API
 curl -X POST http://localhost:8080/api/load \
   -H "Content-Type: application/json" \
-  -d '{"file_path": "example.svg"}'
+  -d '{"file_path": "dashboard.svg"}'
 
 # Query elements
 curl -X POST http://localhost:8080/api/query \
   -H "Content-Type: application/json" \
-  -d '{"query": "//text[@id=\"title\"]", "type": "xpath"}'
+  -d '{"query": "//text[@class=\"metric-value\"]", "type": "xpath"}'
 
-# Update element
+# Update values
 curl -X POST http://localhost:8080/api/update \
   -H "Content-Type: application/json" \
-  -d '{"xpath": "//text[@id=\"title\"]", "type": "text", "value": "New Title"}'
+  -d '{"xpath": "//text[@class=\"revenue\"]", "type": "text", "value": "$1.2M"}'
+
+# Save changes
+curl -X POST http://localhost:8080/api/save \
+  -H "Content-Type: application/json" \
+  -d '{"output_path": "updated_dashboard.svg"}'
 ```
 
 ### XPath Examples
@@ -148,14 +192,17 @@ curl -X POST http://localhost:8080/api/update \
 # Find elements by attribute value
 //rect[@fill='red']
 
-# Find elements containing text
-//text[contains(., 'Hello')]
+# Find elements containing specific text
+//text[contains(., 'Revenue')]
 
 # Find elements by position
 //record[position()=1]
 
-# Find elements with specific child
+# Find parent elements with specific children
 //record[email='john@example.com']
+
+# Complex queries with multiple conditions
+//svg//text[@font-size='16' and contains(@class, 'title')]
 ```
 
 ### CSS Selector Examples (HTML only)
@@ -174,15 +221,19 @@ div.content p
 
 # Pseudo-selectors
 li:first-child
+
+# Complex selectors
+nav.primary ul.menu li a[href^="/products"]
 ```
 
 ## 🏗️ Project Structure
 
 ```
-universal-file-editor/
+xqr/
 ├── pyproject.toml          # Poetry configuration
 ├── README.md              # This file
-├── file_editor/           # Main package
+├── Makefile               # Development automation
+├── xqr/                   # Main package
 │   ├── __init__.py        # Package initialization
 │   ├── core.py           # Core FileEditor class
 │   ├── cli.py            # Command-line interface
@@ -200,26 +251,31 @@ universal-file-editor/
 ### Setting up Development Environment
 ```bash
 # Clone repository
-git clone https://github.com/yourusername/universal-file-editor.git
-cd universal-file-editor
+git clone https://github.com/veridock/xqr.git
+cd xqr
 
 # Install with development dependencies
 poetry install
 
-# Install pre-commit hooks
-pre-commit install
+# Create example files and run tests
+make dev-setup
 
-# Run tests
-poetry run pytest
+# Run full development cycle
+make dev
+```
 
-# Run with coverage
-poetry run pytest --cov=file_editor
-
-# Format code
-poetry run black file_editor/
-
-# Type checking
-poetry run mypy file_editor/
+### Available Make Commands
+```bash
+make help           # Show all available commands
+make install        # Install package
+make test           # Run test suite
+make test-cov       # Run tests with coverage
+make format         # Format code with black
+make lint           # Run linting
+make examples       # Create example files
+make demo-svg       # Run SVG demo
+make run-server     # Start web server
+make run-shell      # Start interactive shell
 ```
 
 ### Running Tests
@@ -227,14 +283,11 @@ poetry run mypy file_editor/
 # Run all tests
 poetry run pytest
 
+# Run with coverage
+poetry run pytest --cov=xqr --cov-report=html
+
 # Run specific test file
-poetry run pytest tests/test_core.py
-
-# Run with verbose output
-poetry run pytest -v
-
-# Run with coverage report
-poetry run pytest --cov=file_editor --cov-report=html
+poetry run pytest tests/test_core.py -v
 ```
 
 ## 📋 Requirements
@@ -243,16 +296,59 @@ poetry run pytest --cov=file_editor --cov-report=html
 - **lxml**: For XPath support (automatically installed)
 - **beautifulsoup4**: For CSS selector support (automatically installed)
 
+## 🎯 Use Cases
+
+### DevOps & Configuration Management
+```bash
+# Update configuration across multiple environments
+for env in dev staging prod; do
+    xqr load "config-${env}.xml"
+    xqr set "//database/host" "db-${env}.company.com"
+    xqr set "//cache/ttl" "3600"
+    xqr save
+done
+```
+
+### Content Management
+```bash
+# Update copyright notices across all HTML files
+find . -name "*.html" -exec xqr load {} \; \
+    -exec xqr set "//footer//span[@class='year']" "2025" \; \
+    -exec xqr save {} \;
+```
+
+### Data Processing
+```bash
+# Extract and transform data from XML files
+xqr shell << EOF
+load sales-data.xml
+list //record[sales>10000]
+set //record[sales>10000]/status "high-performer"
+save processed-sales.xml
+exit
+EOF
+```
+
+### SVG Automation
+```bash
+# Update chart data and metadata
+xqr load quarterly-chart.svg
+xqr set "//text[@class='chart-title']" "Q1 2025 Results"
+xqr set "//metadata/generated" "$(date)"
+xqr setattr "//rect[@class='revenue-bar']" height "250"
+xqr save
+```
+
 ## 🤝 Contributing
 
 1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+2. Create a feature branch (`git checkout -b feature/xpath-improvements`)
 3. Make your changes
 4. Add tests for new functionality
-5. Run the test suite (`poetry run pytest`)
-6. Format your code (`poetry run black file_editor/`)
-7. Commit your changes (`git commit -am 'Add amazing feature'`)
-8. Push to the branch (`git push origin feature/amazing-feature`)
+5. Run the test suite (`make test`)
+6. Format your code (`make format`)
+7. Commit your changes (`git commit -am 'Add XPath improvements'`)
+8. Push to the branch (`git push origin feature/xpath-improvements`)
 9. Open a Pull Request
 
 ## 📄 License
@@ -261,23 +357,48 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 🔗 Links
 
-- **Homepage**: https://github.com/yourusername/universal-file-editor
-- **Documentation**: https://github.com/yourusername/universal-file-editor#readme
-- **Issues**: https://github.com/yourusername/universal-file-editor/issues
-- **PyPI**: https://pypi.org/project/universal-file-editor/
+- **Homepage**: https://github.com/veridock/xqr
+- **Documentation**: https://github.com/veridock/xqr#readme
+- **Issues**: https://github.com/veridock/xqr/issues
+- **PyPI**: https://pypi.org/project/xqr/
 
-## 🌟 Why Universal File Editor?
+## 🌟 Why XQR?
 
-Traditional file editing requires specialized tools for each format:
-- SVG files → Inkscape, Adobe Illustrator
-- HTML files → Web browsers, text editors  
-- XML files → XML editors, IDEs
+Traditional approaches require different tools for each format:
+- **SVG files** → Inkscape, Adobe Illustrator, manual editing
+- **HTML files** → Web browsers, text editors, sed/awk scripts  
+- **XML files** → XML editors, custom parsers, XSLT
 
-**Universal File Editor** provides a single, consistent interface for all structured document formats, enabling:
+**XQR provides a unified interface** using standard web technologies:
+- **XPath** - W3C standard for XML/HTML navigation
+- **CSS Selectors** - Familiar syntax for web developers
+- **Command Line** - Scriptable and automation-friendly
+- **REST API** - Integration with existing workflows
 
-- **Automation**: Script repetitive edits across thousands of files
-- **Integration**: Embed in CI/CD pipelines and build processes  
-- **Consistency**: Use the same XPath/CSS knowledge across all formats
-- **Accessibility**: No specialized software required - works anywhere Python runs
+Perfect for:
+- **CI/CD pipelines** - automated content updates
+- **Content management** - bulk HTML modifications
+- **Data processing** - XML transformation workflows  
+- **Design automation** - SVG batch processing
+- **Configuration management** - XML config updates
 
-Perfect for developers, system administrators, and content managers who work with structured data files.
+### Real-world Examples
+
+**E-commerce**: Update product prices across thousands of XML files
+```bash
+find products/ -name "*.xml" -exec xqr set "//price[@currency='USD']" "$(calc_new_price {})" \;
+```
+
+**Documentation**: Update version numbers in all HTML docs
+```bash
+xqr set "//meta[@name='version']" "v2.1.0" --type attribute --attr content
+```
+
+**Analytics**: Update dashboard charts with new data
+```bash
+xqr set "//svg//text[@class='metric']" "$REVENUE_METRIC"
+```
+
+---
+
+**XQR - Making structured data editing simple, fast, and scriptable.**

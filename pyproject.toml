@@ -50,7 +50,7 @@ dev = [
 ]
 
 [project.scripts]
-file-editor = "file_editor.cli:main"
+xqr = "xqr.cli:main"
 
 [project.urls]
 Homepage = "https://github.com/veridock/xqr"
