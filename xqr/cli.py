@@ -2,16 +2,15 @@
 Command Line Interface for the Universal File Editor
 """
 
-import argparse
-import sys
-from pathlib import Path
 from typing import List, Tuple
-
+from pathlib import Path
+import sys
+import re
+import argparse
 from xqr.core import FileEditor, create_example_files
 from xqr.state import get_current_file, set_current_file
 from xqr.server import start_server
 from xqr.jquery_syntax import process_jquery_syntax
-import re
 
 
 class CLI:
@@ -43,10 +42,15 @@ class CLI:
         load_parser.add_argument('file', help='File to load')
         load_parser.set_defaults(func=self._handle_load)
 
-        # Query command
-        query_parser = subparsers.add_parser('query', help='Query elements using XPath')
+        # Query command (alias: get)
+        query_parser = subparsers.add_parser('query', help='Query elements using XPath (alias: get)')
         query_parser.add_argument('xpath', help='XPath expression')
         query_parser.set_defaults(func=self._handle_query)
+        
+        # Alias 'get' to 'query'
+        get_parser = subparsers.add_parser('get', help='Alias for query')
+        get_parser.add_argument('xpath', help='XPath expression')
+        get_parser.set_defaults(func=self._handle_query)
 
         # Set command
         set_parser = subparsers.add_parser('set', help='Set element content or attributes')
@@ -592,7 +596,7 @@ def handle_direct_operation(args: List[str]) -> bool:
     if not args or args[0].startswith('-'):
         return False
         
-    # Skip if the argument is a valid subcommand
+    # Skip if the argument is a valid subcommand (except 'get' which we want to handle specially)
     valid_commands = ['load', 'query', 'set', 'save', 'create', 'ls', 'shell', 'examples', 'server']
     if args[0] in valid_commands:
         return False
@@ -600,6 +604,27 @@ def handle_direct_operation(args: List[str]) -> bool:
     # Handle jQuery syntax
     if is_jquery_syntax(' '.join(args)):
         return False
+        
+    # Special handling for 'get' command
+    if args[0] == 'get' and len(args) > 1:
+        # Treat as direct operation with XPath
+        xpath = args[1]
+        file_path = get_current_file()
+        if not file_path:
+            print("❌ No file loaded. Use 'load' command first.")
+            return True
+            
+        try:
+            editor = FileEditor(file_path)
+            result = editor.get_element_text(xpath)
+            if result is not None:
+                print(result)
+            else:
+                print(f"❌ Element not found: {xpath}")
+            return True
+        except Exception as e:
+            print(f"❌ Error: {e}")
+            return True
 
     try:
         file_path, xpath = parse_file_xpath(args[0])
@@ -632,11 +657,18 @@ def handle_direct_operation(args: List[str]) -> bool:
             return True
 
         # Handle read operation (no value provided)
-        result = editor.get_element_text(xpath)
-        if result is not None:
-            print(result)
-        else:
-            print(f"❌ Element not found: {xpath}")
+        try:
+            elements = editor.find_by_xpath(xpath)
+            if not elements:
+                print(f"❌ No elements found matching XPath: {xpath}")
+            else:
+                for i, element in enumerate(elements, 1):
+                    if hasattr(element, 'text') and element.text and element.text.strip():
+                        print(f"{i}. {element.text.strip()}")
+                    elif hasattr(element, 'tag'):
+                        print(f"{i}. <{element.tag}> (no text content)")
+                    else:
+                        print(f"{i}. {str(element).strip()}")
         return True
 
     except Exception as e:
