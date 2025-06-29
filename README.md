@@ -18,6 +18,7 @@ Perfect for:
 - **XPath Queries**: Full XPath 1.0 support for precise element selection
 - **CSS Selectors**: CSS selector support for HTML files
 - **Multiple Interfaces**: CLI commands, interactive shell, and web server
+- **State Persistence**: Remembers the last loaded file between commands
 - **REST API**: Programmatic access via HTTP endpoints
 - **Batch Processing**: Automate edits across multiple files
 - **Backup System**: Automatic backup creation before modifications
@@ -51,7 +52,7 @@ pip install xqr
 xqr examples
 ```
 
-### 2. Basic Usage
+### 2. Basic Usage - Standard Commands
 ```bash
 # Load and query a file
 xqr load example.svg
@@ -60,9 +61,35 @@ xqr query "//text[@id='text1']"
 # Update content
 xqr set "//text[@id='text1']" "New Content"
 xqr save
+
+# The file remains loaded between commands
+xqr query "//text[@id='text2']"  # Works without reloading
+
+# To load a different file
+xqr load other_file.xml
 ```
 
-### 3. Interactive Shell
+### 3. Concise File/XPath Operations
+For quick operations, you can directly specify the file and XPath in one command:
+
+```bash
+# Read element content
+xqr example.svg//text[@id='text1']
+
+# Update element content
+xqr example.svg//text[@id='text1'] "New Value"
+
+# Delete element content (set to empty string)
+xqr example.svg//text[@id='text1'] ""
+
+# Read from XML/HTML files
+xqr config.xml//setting[@name='timeout']
+xqr index.html//title "New Page Title"
+
+# This syntax is especially useful for one-off operations and scripts.
+```
+
+### 4. Interactive Shell
 ```bash
 xqr shell
 📝 > load example.html
@@ -70,13 +97,44 @@ xqr shell
 📝 > set //title "Updated Title"
 📝 > save
 📝 > exit
+
+# The shell maintains state between commands automatically
 ```
 
-### 4. Web Interface
+### 5. Web Interface
 ```bash
 xqr server --port 8080
 # Open http://localhost:8080 in your browser
+
+# The web interface shares the same state as the CLI
+# Any file loaded in the web interface will be available to the CLI and vice versa
 ```
+
+## 🔄 State Persistence
+
+XQR maintains state between commands, making it easy to work with files across multiple operations:
+
+```bash
+# Load a file (state is saved to ~/.local/state/xqr/state.json)
+xqr load example.svg
+
+# The file remains loaded for subsequent commands
+xqr query "//title"
+xqr set "//version" "2.0"
+xqr save
+
+# The state persists even if you close the terminal
+# Next time you run xqr, it will remember the last loaded file
+xqr query "//title"  # Still works with the last loaded file
+
+# To clear the state or load a different file
+xqr load different_file.html
+```
+
+### State Management
+- State is stored in `~/.local/state/xqr/state.json`
+- The state includes the path to the last loaded file
+- If the file is moved or deleted, XQR will prompt you to load a new file
 
 ## 📖 Usage Examples
 

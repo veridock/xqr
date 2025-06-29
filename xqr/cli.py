@@ -5,84 +5,479 @@ Command Line Interface for the Universal File Editor
 import argparse
 import sys
 from pathlib import Path
+from typing import List, Tuple
 
-from .core import FileEditor
-from .server import start_server
-from .examples import create_example_files
+from xqr.core import FileEditor, create_example_files
+from xqr.state import get_current_file, set_current_file
+from xqr.server import start_server
+from xqr.jquery_syntax import process_jquery_syntax
+import re
 
 
 class CLI:
-    """Interfejs CLI"""
+    """Command Line Interface for XQR"""
 
     def __init__(self):
         self.editor = None
+        self._load_state()
+        
+    def _load_state(self) -> None:
+        """Load state and initialize editor if a file was previously loaded."""
+        current_file = get_current_file()
+        if current_file and Path(current_file).exists():
+            try:
+                self.editor = FileEditor(current_file)
+            except Exception as e:
+                print(f"⚠️  Could not load previous file {current_file}: {e}")
+                set_current_file(None)
+        elif current_file:  # File doesn't exist anymore
+            set_current_file(None)
 
-    def run(self):
-        """Uruchom CLI"""
-        parser = argparse.ArgumentParser(description='Universal File Editor CLI')
-        subparsers = parser.add_subparsers(dest='command', help='Available commands')
+    def _create_parser(self) -> argparse.ArgumentParser:
+        """Create and configure the argument parser."""
+        parser = argparse.ArgumentParser(description='XQR - XPath Query & Replace')
+        subparsers = parser.add_subparsers(dest='command', help='Command to run')
 
         # Load command
-        load_parser = subparsers.add_parser('load', help='Load file')
-        load_parser.add_argument('file', help='File path')
+        load_parser = subparsers.add_parser('load', help='Load a file')
+        load_parser.add_argument('file', help='File to load')
+        load_parser.set_defaults(func=self._handle_load)
 
         # Query command
-        query_parser = subparsers.add_parser('query', help='Query elements')
+        query_parser = subparsers.add_parser('query', help='Query elements using XPath')
         query_parser.add_argument('xpath', help='XPath expression')
-        query_parser.add_argument('--type', choices=['text', 'attribute'], default='text')
-        query_parser.add_argument('--attr', help='Attribute name')
+        query_parser.set_defaults(func=self._handle_query)
 
         # Set command
-        set_parser = subparsers.add_parser('set', help='Set element value')
+        set_parser = subparsers.add_parser('set', help='Set element content or attributes')
         set_parser.add_argument('xpath', help='XPath expression')
-        set_parser.add_argument('value', help='New value')
-        set_parser.add_argument('--type', choices=['text', 'attribute'], default='text')
-        set_parser.add_argument('--attr', help='Attribute name')
-
-        # List command
-        list_parser = subparsers.add_parser('list', help='List elements')
-        list_parser.add_argument('--xpath', default='//*', help='XPath filter')
+        set_parser.add_argument('value', help='Value to set')
+        set_parser.add_argument(
+            '--type', 
+            choices=['text', 'attribute'], 
+            default='text',
+            help='Type of value to set'
+        )
+        set_parser.add_argument('--attr', help='Attribute name (required if type=attribute)')
+        set_parser.set_defaults(func=self._handle_set)
 
         # Save command
-        save_parser = subparsers.add_parser('save', help='Save file')
-        save_parser.add_argument('--output', help='Output file path')
+        save_parser = subparsers.add_parser('save', help='Save changes to file')
+        save_parser.add_argument('--output', '-o', help='Output file (default: overwrite input file)')
+        save_parser.set_defaults(func=self._handle_save)
 
-        # Server command
-        server_parser = subparsers.add_parser('server', help='Start HTTP server')
-        server_parser.add_argument('--port', type=int, default=8080, help='Server port')
+        # Create command
+        create_parser = subparsers.add_parser('create', help='Create a new file')
+        create_parser.add_argument('file', help='File to create')
+        create_parser.add_argument('--type', choices=['xml', 'html', 'svg'], 
+                                help='File type (default: auto-detect from extension)')
+        create_parser.set_defaults(func=self._handle_create)
+
+        # List command
+        list_parser = subparsers.add_parser(
+            'ls', 
+            help='List available XPath expressions'
+        )
+        list_parser.add_argument(
+            'file', 
+            nargs='?', 
+            help='File to list elements from (default: current file)'
+        )
+        list_parser.add_argument(
+            '--pattern', 
+            default='//*', 
+            help='XPath pattern to filter elements (default: //*)'
+        )
+        list_parser.add_argument(
+            '--with-ids', 
+            action='store_true', 
+            help='Only show elements with ID attributes'
+        )
+        list_parser.set_defaults(func=self._handle_list)
 
         # Shell command
-        shell_parser = subparsers.add_parser('shell', help='Interactive shell')
+        subparsers.add_parser('shell', help='Start interactive shell').set_defaults(
+            func=self._handle_shell
+        )
 
         # Examples command
-        examples_parser = subparsers.add_parser('examples', help='Create example files')
+        subparsers.add_parser('examples', help='Create example files').set_defaults(
+            func=self._handle_examples
+        )
 
+        # Server command
+        server_parser = subparsers.add_parser('server', help='Start web server')
+        server_parser.add_argument('--host', default='0.0.0.0', 
+                                 help='Host to bind to (default: 0.0.0.0)')
+        server_parser.add_argument('--port', type=int, default=8080, 
+                                 help='Port to listen on (default: 8080)')
+        server_parser.set_defaults(func=self._handle_server)
+
+        return parser
+
+    def run(self) -> None:
+        """Run the CLI application."""
+        parser = self._create_parser()
         args = parser.parse_args()
 
-        if not args.command:
+        if hasattr(args, 'func'):
+            args.func(args)
+        else:
             parser.print_help()
+            sys.exit(1)
+
+    def _handle_load(self, args: argparse.Namespace) -> None:
+        """Handle load command.
+        
+        Args:
+            args: Command line arguments
+        """
+        self.editor = FileEditor(args.file)
+        set_current_file(args.file)
+        print(f"✅ Loaded {args.file} ({self.editor.file_type})")
+
+    def _handle_query(self, args: argparse.Namespace) -> None:
+        """Handle query command.
+        
+        Args:
+            args: Command line arguments
+        """
+        if not self.editor:
+            print("❌ No file loaded. Use 'load' command first.")
             return
 
-        if args.command == 'server':
-            start_server(args.port)
-        elif args.command == 'shell':
-            self.start_shell()
-        elif args.command == 'examples':
-            create_example_files()
+        if args.type == 'text':
+            result = self.editor.get_element_text(args.xpath)
+            print(f"Text: {result}")
+        elif args.type == 'html':
+            result = self.editor.get_element_html(args.xpath)
+            print(f"HTML: {result}")
+        elif args.type == 'xml':
+            result = self.editor.get_element_xml(args.xpath)
+            print(f"XML: {result}")
+
+    def _handle_set(self, args: argparse.Namespace) -> None:
+        """Handle set command.
+        
+        Args:
+            args: Command line arguments
+        """
+        if not self.editor:
+            print("❌ No file loaded. Use 'load' command first.")
+            return
+
+        success = self.editor.set_element_text(args.xpath, args.value)
+        if success:
+            print("✅ Element updated")
         else:
-            self.execute_command(args)
+            print("❌ Element not found")
+
+    def _handle_save(self, args: argparse.Namespace) -> None:
+        """Handle save command.
+        
+        Args:
+            args: Command line arguments
+        """
+        if not self.editor:
+            print("❌ No file loaded. Use 'load' command first.")
+            return
+
+        success = self.editor.save(args.output)
+        if success:
+            save_path = args.output or self.editor.file_path
+            print(f"✅ Saved to {save_path}")
+        else:
+            print("❌ Save failed")
+
+    def _handle_shell(self, _args: argparse.Namespace) -> None:
+        """Handle shell command.
+        
+        Args:
+            _args: Command line arguments (unused)
+        """
+        print("Starting interactive shell. Type 'exit' or 'quit' to exit.")
+        print(f"Current file: {self.editor.file_path if self.editor else 'None'}")
+        print("Available commands: load, query, set, save, exit")
+
+        while True:
+            try:
+                command = input("xqr> ").strip()
+                if not command:
+                    continue
+                if command.lower() in ('exit', 'quit'):
+                    break
+                self._execute_shell_command(command)
+            except KeyboardInterrupt:
+                print("\nUse 'exit' or 'quit' to exit the shell")
+            except Exception as e:
+                print(f"Error: {e}")
+
+    def _execute_shell_command(self, command: str) -> None:
+        """Execute a shell command.
+        
+        Args:
+            command: Command to execute
+        """
+        parts = command.split()
+        if not parts:
+            return
+
+        command = parts[0].lower()
+
+        if command == 'load' and len(parts) >= 2:
+            file_path = ' '.join(parts[1:])  # Handle filenames with spaces
+            try:
+                self.editor = FileEditor(file_path)
+                print(f"✅ Loaded {file_path} ({self.editor.file_type})")
+            except Exception as e:
+                print(f"❌ Error loading file: {e}")
+
+        elif command == 'query' and len(parts) >= 2:
+            if not self.editor:
+                print("❌ No file loaded. Use 'load <file>' first.")
+                return
+
+            xpath = ' '.join(parts[1:])
+            try:
+                result = self.editor.get_element_text(xpath)
+                if result:
+                    print(f"📄 Text: {result}")
+                else:
+                    print("📄 No text content found (element may exist but be empty)")
+            except Exception as e:
+                print(f"❌ Query error: {e}")
+
+        elif command == 'set' and len(parts) >= 3:
+            if not self.editor:
+                print("❌ No file loaded")
+                return
+
+            xpath = parts[1]
+            value = ' '.join(parts[2:])
+            try:
+                success = self.editor.set_element_text(xpath, value)
+                if success:
+                    print("✅ Text updated")
+                else:
+                    print("❌ Element not found")
+            except Exception as e:
+                print(f"❌ Update error: {e}")
+
+        elif command == 'save':
+            if not self.editor:
+                print("❌ No file loaded")
+                return
+
+            output_file = parts[1] if len(parts) > 1 else None
+            try:
+                success = self.editor.save(output_file)
+                if success:
+                    save_path = output_file or self.editor.file_path
+                    print(f"✅ Saved to {save_path}")
+                else:
+                    print("❌ Save failed")
+            except Exception as e:
+                print(f"❌ Save error: {e}")
+
+        elif command == 'info':
+            if not self.editor:
+                print("❌ No file loaded")
+                return
+
+            print(f"📁 File: {self.editor.file_path}")
+            print(f"📄 Type: {self.editor.file_type}")
+
+        else:
+            print("❌ Unknown command or missing arguments")
+            print("💡 Type 'help' for available commands")
+
+    def _handle_server(self, args: argparse.Namespace) -> None:
+        """Handle server command.
+        
+        Args:
+            args: Command line arguments
+        """
+        start_server(args.host, args.port)
+
+    def _handle_examples(self, _args: argparse.Namespace) -> None:
+        """Handle examples command.
+        
+        Args:
+            _args: Command line arguments (unused)
+        """
+        try:
+            create_example_files()
+            print("✅ Created example files: example.svg, example.xml, example.html")
+        except Exception as e:
+            print(f"❌ Could not create example files: {e}")
+
+    def _handle_create(self, args) -> int:
+        """Handle the create command.
+        
+        Args:
+            args: Command line arguments
+            
+        Returns:
+            int: 0 on success, 1 on error
+        """
+        try:
+            # Create an empty file with the specified type
+            file_path = Path(args.file)
+            file_type = args.type or file_path.suffix[1:].lower()
+            
+            if not file_type:
+                print("❌ Could not determine file type. Please specify with --type")
+                return 1
+                
+            if file_path.exists():
+                print(f"❌ File already exists: {file_path}")
+                return 1
+                
+            # Create parent directories if they don't exist
+            file_path.parent.mkdir(parents=True, exist_ok=True)
+            
+            # Create basic content based on file type
+            if file_type == 'svg':
+                content = '''<?xml version="1.0" encoding="UTF-8"?>
+<svg width="100" height="100" xmlns="http://www.w3.org/2000/svg">
+  <rect width="100" height="100" fill="#f0f0f0"/>
+  <text x="50" y="50" text-anchor="middle" fill="black">New SVG</text>
+</svg>'''
+            elif file_type == 'html':
+                content = '''<!DOCTYPE html>
+<html>
+<head>
+  <title>New Document</title>
+</head>
+<body>
+  <h1>New HTML Document</h1>
+</body>
+</html>'''
+            elif file_type == 'xml':
+                content = '''<?xml version="1.0" encoding="UTF-8"?>
+<root>
+  <element>New XML Document</element>
+</root>'''
+            else:
+                content = ''
+                
+            # Write the file
+            with open(file_path, 'w', encoding='utf-8') as f:
+                f.write(content)
+                
+            print(f"✅ Created new {file_type.upper()} file: {file_path}")
+            return 0
+            
+        except Exception as e:
+            print(f"❌ Error creating file: {e}")
+            return 1
+
+    def _handle_list(self, args) -> int:
+        """Handle the list command.
+        
+        Args:
+            args: Command line arguments
+            
+        Returns:
+            int: 0 on success, 1 on error
+        """
+        file_path = args.file or get_current_file()
+        if not file_path:
+            print("❌ No file specified and no file is currently loaded")
+            print("Usage: xqr ls [FILE] [--pattern XPATH] [--with-ids]")
+            return 1
+
+        if not Path(file_path).exists():
+            print(f"❌ File not found: {file_path}")
+            return 1
+
+        try:
+            # Create a temporary editor instance for listing
+            editor = FileEditor(file_path)
+            elements = editor.list_elements(args.pattern)
+
+            if not elements:
+                print(f"No elements found matching pattern: {args.pattern}")
+                return 0
+
+            print(f"\nAvailable elements in {file_path}:")
+            print("-" * 80)
+
+            for elem in elements:
+                tag = elem['tag']
+                attrs = elem['attributes']
+
+                # Skip elements without IDs if --with-ids is specified
+                if args.with_ids and 'id' not in attrs:
+                    continue
+
+                # Create a more readable XPath expression
+                if 'id' in attrs:
+                    xpath = f"//{tag}[@id='{attrs['id']}']"
+                # For SVG elements with xlink:href, create a specific XPath
+                elif '{http://www.w3.org/1999/xlink}href' in attrs:
+                    href = attrs['{http://www.w3.org/1999/xlink}href']
+                    xpath = f"//{tag}[@xlink:href='{href}']"
+                else:
+                    xpath = elem['path']
+
+                # Print the XPath with element info
+                print(f"xqr {file_path}//{xpath}")
+
+                # Print attributes if available
+                if attrs:
+                    attr_str = ', '.join(
+                        f"{k}={v}" for k, v in attrs.items() 
+                        if not k.startswith('{')
+                    )
+                    print(f"  Attributes: {attr_str}")
+
+                # Print text content if available
+                if elem['text']:
+                    text = elem['text']
+                    text_preview = text[:50] + ('...' if len(text) > 50 else '')
+                    print(f"  Text: {text_preview}")
+                print()
+
+            print(f"\nFound {len(elements)} elements")
+            print("Tip: Use 'xqr ls --pattern' to filter elements by XPath")
+            print("     Use 'xqr ls --with-ids' to only show elements with ID attributes")
+
+            # If no elements were shown due to --with-ids filter
+            if args.with_ids and not any('id' in e['attributes'] for e in elements):
+                print("\nNo elements with ID attributes found. "
+                      "Try without --with-ids to see all elements.")
+
+            return 0
+
+        except Exception as e:
+            print(f"❌ Error listing elements: {e}")
+            return 1
 
     def execute_command(self, args):
-        """Wykonaj komendę CLI"""
+        """Execute a CLI command"""
         try:
             if args.command == 'load':
                 self.editor = FileEditor(args.file)
+                set_current_file(args.file)
                 print(f"✅ Loaded {args.file} ({self.editor.file_type})")
-
-            elif args.command == 'query':
-                if not self.editor:
+                return
+                
+            if not self.editor:
+                current_file = get_current_file()
+                if current_file and Path(current_file).exists():
+                    try:
+                        self.editor = FileEditor(current_file)
+                        print(f"ℹ️  Using previously loaded file: {current_file}")
+                    except Exception as e:
+                        print(f"❌ Could not load previous file {current_file}: {e}")
+                        set_current_file(None)
+                        return
+                else:
                     print("❌ No file loaded. Use 'load' command first.")
                     return
+
+            if args.command == 'query':
 
                 if args.type == 'text':
                     result = self.editor.get_element_text(args.xpath)
@@ -162,204 +557,132 @@ class CLI:
             print(f"❌ Error: {e}")
             sys.exit(1)
 
-    def start_shell(self):
-        """Uruchom interaktywny shell"""
-        print("🚀 Interactive File Editor Shell")
-        print("Commands:")
-        print("  load <file>           - Load a file")
-        print("  query <xpath>         - Query elements with XPath")
-        print("  set <xpath> <value>   - Set element text")
-        print("  setattr <xpath> <attr> <value> - Set element attribute")
-        print("  list [xpath]          - List elements (optional XPath filter)")
-        print("  save [file]           - Save changes (optional output file)")
-        print("  info                  - Show current file info")
-        print("  help                  - Show this help")
-        print("  exit                  - Exit shell")
-        print()
 
-        while True:
+def parse_file_xpath(arg: str) -> Tuple[Path, str]:
+    """Parse file path and XPath from argument in format 'file.svg//xpath'.
+
+    Args:
+        arg: Input string in format 'file.svg//xpath' or 'file.svg'
+
+    Returns:
+        Tuple of (file_path, xpath)
+    """
+    if '//' in arg:
+        file_part, xpath = arg.split('//', 1)
+        return Path(file_part), f'//{xpath}'
+    return Path(arg), '//*'
+
+def is_jquery_syntax(arg: str) -> bool:
+    """Check if the argument is a jQuery-style command.
+    
+    Args:
+        arg: Command argument to check
+        
+    Returns:
+        bool: True if the argument is a jQuery-style command
+    """
+    return bool(re.match(r'^[^$]*\$\s*\(', arg))
+
+def handle_direct_operation(args: List[str]) -> bool:
+    """Handle direct file/xpath operations.
+
+    Returns:
+        bool: True if the operation was handled, False otherwise
+    """
+    if not args or args[0].startswith('-'):
+        return False
+        
+    # Skip if the argument is a valid subcommand
+    valid_commands = ['load', 'query', 'set', 'save', 'create', 'ls', 'shell', 'examples', 'server']
+    if args[0] in valid_commands:
+        return False
+        
+    # Handle jQuery syntax
+    if is_jquery_syntax(' '.join(args)):
+        return False
+
+    try:
+        file_path, xpath = parse_file_xpath(args[0])
+        value = args[1] if len(args) > 1 else None
+
+        if not file_path.exists():
+            print(f"❌ File not found: {file_path}")
+            return True
+
+        editor = FileEditor(file_path)
+
+        # Handle delete operation (empty string as value)
+        if value == '':
+            success = editor.set_element_text(xpath, '')
+            if success:
+                editor.save()
+                print(f"✅ Deleted content of {xpath} in {file_path}")
+            else:
+                print(f"❌ Element not found: {xpath}")
+            return True
+
+        # Handle update/create operation
+        if value is not None:
+            success = editor.set_element_text(xpath, value)
+            if success:
+                editor.save()
+                print(f"✅ Updated {xpath} in {file_path}")
+            else:
+                print(f"❌ Could not update {xpath} (element not found)")
+            return True
+
+        # Handle read operation (no value provided)
+        result = editor.get_element_text(xpath)
+        if result is not None:
+            print(result)
+        else:
+            print(f"❌ Element not found: {xpath}")
+        return True
+
+    except Exception as e:
+        print(f"❌ Error: {e}")
+        return True
+
+def main() -> None:
+    """Main entry point for CLI."""
+    # Check for direct file/xpath operation first
+    if len(sys.argv) > 1 and not sys.argv[1].startswith('-'):
+        if handle_direct_operation(sys.argv[1:]):
+            return
+            
+        # Check for jQuery syntax in the command
+        command = ' '.join(sys.argv[1:])
+        if '$(' in command:
+            # Extract file path before $
+            parts = command.split('$', 1)
+            file_path = parts[0].strip()
+            jquery_cmd = '$' + parts[1].strip()
+            
+            if not file_path:
+                print("❌ No file specified")
+                sys.exit(1)
+                
             try:
-                command_line = input("📝 > ").strip()
-                if not command_line:
-                    continue
-
-                if command_line in ['exit', 'quit']:
-                    print("👋 Goodbye!")
-                    break
-
-                if command_line in ['help', '?']:
-                    print("\nAvailable commands:")
-                    print("  load <file>")
-                    print("  query <xpath>")
-                    print("  set <xpath> <value>")
-                    print("  setattr <xpath> <attr> <value>")
-                    print("  list [xpath]")
-                    print("  save [file]")
-                    print("  info")
-                    print("  help")
-                    print("  exit")
-                    continue
-
-                parts = command_line.split()
-                if not parts:
-                    continue
-
-                command = parts[0].lower()
-
-                if command == 'load' and len(parts) >= 2:
-                    file_path = ' '.join(parts[1:])  # Handle filenames with spaces
-                    try:
-                        self.editor = FileEditor(file_path)
-                        print(f"✅ Loaded {file_path} ({self.editor.file_type})")
-                        if hasattr(self.editor, 'find_by_xpath'):
-                            try:
-                                element_count = len(self.editor.find_by_xpath("//*"))
-                                print(f"   📊 Found {element_count} elements")
-                            except:
-                                pass
-                    except Exception as e:
-                        print(f"❌ Error loading file: {e}")
-
-                elif command == 'query' and len(parts) >= 2:
-                    if not self.editor:
-                        print("❌ No file loaded. Use 'load <file>' first.")
-                        continue
-
-                    xpath = ' '.join(parts[1:])
-                    try:
-                        result = self.editor.get_element_text(xpath)
-                        if result:
-                            print(f"📄 Text: {result}")
-                        else:
-                            print("📄 No text content found (element may exist but be empty)")
-                            # Try to show if element exists
-                            elements = self.editor.find_by_xpath(xpath)
-                            if elements:
-                                elem = elements[0]
-                                if hasattr(elem, 'tag'):
-                                    print(f"   Element found: <{elem.tag}>")
-                                if hasattr(elem, 'attrib'):
-                                    attrs = dict(elem.attrib)
-                                    if attrs:
-                                        print(f"   Attributes: {attrs}")
-                            else:
-                                print("   No elements found")
-                    except Exception as e:
-                        print(f"❌ Query error: {e}")
-
-                elif command == 'set' and len(parts) >= 3:
-                    if not self.editor:
-                        print("❌ No file loaded")
-                        continue
-
-                    xpath = parts[1]
-                    value = ' '.join(parts[2:])
-                    try:
-                        success = self.editor.set_element_text(xpath, value)
-                        if success:
-                            print("✅ Text updated")
-                        else:
-                            print("❌ Element not found")
-                    except Exception as e:
-                        print(f"❌ Update error: {e}")
-
-                elif command == 'setattr' and len(parts) >= 4:
-                    if not self.editor:
-                        print("❌ No file loaded")
-                        continue
-
-                    xpath = parts[1]
-                    attr_name = parts[2]
-                    attr_value = ' '.join(parts[3:])
-                    try:
-                        success = self.editor.set_element_attribute(xpath, attr_name, attr_value)
-                        if success:
-                            print(f"✅ Attribute {attr_name} updated")
-                        else:
-                            print("❌ Element not found")
-                    except Exception as e:
-                        print(f"❌ Update error: {e}")
-
-                elif command == 'list':
-                    if not self.editor:
-                        print("❌ No file loaded")
-                        continue
-
-                    xpath = parts[1] if len(parts) > 1 else "//*"
-                    try:
-                        elements = self.editor.list_elements(xpath)
-                        if not elements:
-                            print("No elements found")
-                            continue
-
-                        print(f"📋 Found {len(elements)} elements:")
-                        for i, elem in enumerate(elements[:10]):  # limit to 10 in shell
-                            tag = elem.get('tag', 'unknown')
-                            text = elem.get('text', '').strip()
-                            text_preview = f": {repr(text[:30])}" if text else ""
-                            print(f"  {i+1}. <{tag}>{text_preview}")
-
-                        if len(elements) > 10:
-                            print(f"  ... and {len(elements) - 10} more")
-                    except Exception as e:
-                        print(f"❌ List error: {e}")
-
-                elif command == 'save':
-                    if not self.editor:
-                        print("❌ No file loaded")
-                        continue
-
-                    output_file = parts[1] if len(parts) > 1 else None
-                    try:
-                        success = self.editor.save(output_file)
-                        if success:
-                            save_path = output_file or self.editor.file_path
-                            print(f"✅ Saved to {save_path}")
-                        else:
-                            print("❌ Save failed")
-                    except Exception as e:
-                        print(f"❌ Save error: {e}")
-
-                elif command == 'info':
-                    if not self.editor:
-                        print("❌ No file loaded")
-                        continue
-
-                    print(f"📁 File: {self.editor.file_path}")
-                    print(f"📄 Type: {self.editor.file_type}")
-                    if hasattr(self.editor, 'find_by_xpath'):
-                        try:
-                            element_count = len(self.editor.find_by_xpath("//*"))
-                            print(f"📊 Elements: {element_count}")
-                        except:
-                            print("📊 Elements: Unable to count")
-
-                else:
-                    print("❌ Unknown command or missing arguments")
-                    print("💡 Type 'help' for available commands")
-
-            except KeyboardInterrupt:
-                print("\n👋 Goodbye!")
-                break
-            except EOFError:
-                print("\n👋 Goodbye!")
-                break
+                editor = FileEditor(file_path)
+                result = process_jquery_syntax(jquery_cmd, editor)
+                print(result)
+                editor.save()  # Save changes
+                sys.exit(0)
             except Exception as e:
-                print(f"❌ Unexpected error: {e}")
+                print(f"❌ Error processing jQuery command: {e}")
+                sys.exit(1)
 
-
-def main():
-    """Main entry point for CLI"""
-    # Sprawdź czy mamy przykładowe pliki
+    # Check if we have example files
     example_files = ['example.svg', 'example.xml', 'example.html']
     if not any(Path(f).exists() for f in example_files):
         print("📁 No example files found. Creating them...")
         try:
             create_example_files()
+            print("✅ Created example files: example.svg, example.xml, example.html")
         except Exception as e:
             print(f"⚠️  Could not create example files: {e}")
 
-    # Uruchom CLI
+    # Run standard CLI
     cli = CLI()
     try:
         cli.run()

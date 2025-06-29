@@ -4,7 +4,7 @@ build-backend = "poetry.core.masonry.api"
 
 [project]
 name = "xqr"
-version = "0.1.0"
+version = "0.1.1"
 description = "Universal CLI tool for editing SVG, HTML, and XML files using XPath and CSS selectors"
 readme = "README.md"
 requires-python = ">=3.8.1,<4.0"
@@ -36,7 +36,8 @@ classifiers = [
 ]
 dependencies = [
     "lxml>=4.9.0,<5.0.0",
-    "beautifulsoup4>=4.12.0,<5.0.0"
+    "beautifulsoup4>=4.12.0,<5.0.0",
+    "cssselect>=1.2.0,<2.0.0"
 ]
 
 [project.optional-dependencies]

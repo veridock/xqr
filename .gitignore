@@ -42,6 +42,11 @@ ENV/
 .pydevproject
 .settings/
 
+# Backup files
+*.bak
+*.bak.*
+*.backup*
+
 # Testing
 .coverage
 htmlcov/

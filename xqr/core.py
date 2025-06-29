@@ -4,7 +4,7 @@ Core FileEditor class for parsing and manipulating XML/HTML/SVG files
 
 import xml.etree.ElementTree as ET
 from pathlib import Path
-from typing import Dict, List, Optional, Union
+from typing import Dict, List
 
 try:
     from lxml import etree, html
@@ -21,10 +21,75 @@ except ImportError:
     BS4_AVAILABLE = False
 
 
-class FileEditor:
-    """Główna klasa do edycji plików XML/HTML/SVG"""
+def create_example_files() -> None:
+    """Create example files for demonstration purposes.
 
-    def __init__(self, file_path: str):
+    Creates three example files: example.svg, example.xml, and example.html
+    with sample content for testing the editor.
+    """
+    # Example SVG file
+    svg_content = """<?xml version="1.0" encoding="UTF-8"?>
+<svg width="200" height="100" xmlns="http://www.w3.org/2000/svg">
+  <rect width="200" height="100" fill="#f0f0f0"/>
+  <text x="100" y="50" font-family="Arial" font-size="16"
+        text-anchor="middle" id="text1">Hello SVG</text>
+  <text x="100" y="80" font-family="Arial" font-size="12"
+        text-anchor="middle" id="text2">Edit me!</text>
+</svg>"""
+    
+    # Example XML file
+    xml_content = """<?xml version="1.0" encoding="UTF-8"?>
+<root>
+  <greeting>Hello World</greeting>
+  <items>
+    <item id="1">First item</item>
+    <item id="2">Second item</item>
+  </items>
+</root>"""
+    
+    # Example HTML file
+    html_content = """<!DOCTYPE html>
+<html>
+<head>
+  <title>Example</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; }
+    .highlight { color: blue; }
+  </style>
+</head>
+<body>
+  <h1>Example HTML</h1>
+  <p class="highlight">This is a sample HTML file.</p>
+  <ul id="items">
+    <li>Item 1</li>
+    <li>Item 2</li>
+  </ul>
+</body>
+</html>"""
+    
+    # Write files
+    with open("example.svg", "w", encoding="utf-8") as f:
+        f.write(svg_content)
+    with open("example.xml", "w", encoding="utf-8") as f:
+        f.write(xml_content)
+    with open("example.html", "w", encoding="utf-8") as f:
+        f.write(html_content)
+
+
+
+class FileEditor:
+    """Main class for editing XML/HTML/SVG files"""
+
+    def __init__(self, file_path: str) -> None:
+        """Initialize FileEditor with a file path
+        
+        Args:
+            file_path: Path to the file to edit
+            
+        Raises:
+            FileNotFoundError: If the file does not exist
+            ValueError: If the file cannot be parsed
+        """
         self.file_path = Path(file_path)
         self.tree = None
         self.root = None
@@ -32,8 +97,13 @@ class FileEditor:
         self.original_content = None
         self._load_file()
 
-    def _load_file(self):
-        """Ładuje plik i określa jego typ"""
+    def _load_file(self) -> None:
+        """Load file and determine its type
+        
+        Raises:
+            FileNotFoundError: If the file does not exist
+            ValueError: If the file cannot be parsed
+        """
         if not self.file_path.exists():
             raise FileNotFoundError(f"File not found: {self.file_path}")
 
@@ -67,29 +137,108 @@ class FileEditor:
         else:
             self._fallback_parse()
 
-    def _fallback_parse(self):
-        """Fallback parsing using ElementTree"""
+    def _fallback_parse(self) -> None:
+        """Fallback parsing using ElementTree
+        
+        Raises:
+            ValueError: If the file cannot be parsed
+        """
         try:
             self.tree = ET.fromstring(self.original_content)
             self.root = self.tree
         except ET.ParseError as e:
             raise ValueError(f"Cannot parse file: {e}")
 
+    def _prepare_xpath_for_svg(self, xpath: str) -> tuple[str, dict]:
+        """Prepare XPath expression and namespaces for SVG files
+        
+        Args:
+            xpath: Original XPath expression
+            
+        Returns:
+            Tuple of (modified_xpath, namespaces_dict)
+        """
+        namespaces = {'svg': 'http://www.w3.org/2000/svg'}
+        
+        # If the xpath already has namespace prefixes, use them as-is
+        if ':' in xpath and not xpath.lstrip().startswith(('//', '/', './/', './', '(', '@')):
+            return xpath, namespaces
+            
+        # Otherwise, modify the xpath to include svg: prefix for elements
+        parts = []
+        for part in xpath.split('/'):
+            if not part or part == '.':
+                parts.append(part)
+                continue
+                
+            # Handle attributes and special cases
+            if part.startswith('@') or part in ('text()', '.', '..', 'node()'):
+                parts.append(part)
+                continue
+                
+            # Handle predicates
+            if '[' in part:
+                elem, pred = part.split('[', 1)
+                pred = '[' + pred
+                if not elem.startswith(('@', '.', 'svg:')) and not any(
+                    elem.startswith(f) for f in ('contains', 'starts-with', 'ends-with')
+                ):
+                    elem = f'svg:{elem}'
+                parts.append(f"{elem}{pred}")
+                continue
+                
+            # Handle element names
+            if not any(part.startswith(p) for p in ('@', '.', 'svg:')):
+                part = f'svg:{part}'
+                
+            parts.append(part)
+            
+        return '/'.join(parts), namespaces
+
     def find_by_xpath(self, xpath: str) -> List:
-        """Znajdź elementy używając XPath"""
+        """Find elements using XPath with namespace support
+        
+        Args:
+            xpath: XPath expression to find elements
+            
+        Returns:
+            List of matching elements
+            
+        Raises:
+            NotImplementedError: If lxml is not available
+            ValueError: If the XPath expression is invalid
+        """
         if not LXML_AVAILABLE:
             raise NotImplementedError("XPath requires lxml library")
 
         try:
-            if isinstance(self.tree, etree._Element):
-                return self.tree.xpath(xpath)
-            else:
+            if not isinstance(self.tree, etree._Element):
                 return []
+                
+            # Handle SVG namespace
+            if self.file_type == 'svg':
+                xpath, namespaces = self._prepare_xpath_for_svg(xpath)
+            else:
+                namespaces = {}
+                
+            return self.tree.xpath(xpath, namespaces=namespaces)
+            
         except Exception as e:
-            raise ValueError(f"Invalid XPath expression: {e}")
+            raise ValueError(f"Invalid XPath expression '{xpath}': {e}")
 
     def find_by_css(self, css_selector: str) -> List:
-        """Znajdź elementy używając CSS selectors (tylko HTML)"""
+        """Find elements using CSS selectors (HTML only)
+        
+        Args:
+            css_selector: CSS selector to find elements
+            
+        Returns:
+            List of matching elements
+            
+        Raises:
+            NotImplementedError: If beautifulsoup4 is not available
+            ValueError: If the file is not HTML
+        """
         if not BS4_AVAILABLE:
             raise NotImplementedError("CSS selectors require beautifulsoup4 library")
 

@@ -1,5 +1,6 @@
 """
-XQR (XPath Query & Replace) - CLI tool for editing SVG, HTML, and XML files using XPath and CSS selectors
+XQR (XPath Query & Replace) - CLI tool for editing SVG, HTML, and XML files
+using XPath and CSS selectors.
 """
 
 from .core import FileEditor

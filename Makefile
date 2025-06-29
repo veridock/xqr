@@ -2,7 +2,7 @@
 
 # Default target
 help:
-	@echo "Universal File Editor - Available Commands:"
+	@echo "XQR (XPath Query & Replace) - Available Commands:"
 	@echo ""
 	@echo "Setup & Installation:"
 	@echo "  install      - Install package with Poetry"
@@ -101,6 +101,7 @@ clean:
 	find . -type f -name "*.pyc" -delete 2>/dev/null || true
 
 build: clean
+	poetry version patch
 	poetry build
 
 publish: build
