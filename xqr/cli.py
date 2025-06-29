@@ -2,17 +2,19 @@
 Command Line Interface for the Universal File Editor
 """
 
-from typing import List, Optional, Type, Dict, Any
-from pathlib import Path
-import sys
-import re
 import argparse
-import importlib
-from xqr.core.editor import FileEditor
-from xqr.state import get_current_file, set_current_file
-from xqr.jquery_syntax import process_jquery_syntax
-from xqr.commands import get_command_class
+import os
+import re
+import sys
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Tuple, Union
 
+from xqr.commands import get_command_class
+from xqr.core.editor import FileEditor
+from xqr.core.examples import create_example_files
+from xqr.jquery_syntax import process_jquery_syntax
+from xqr.server.server import start_server
+from xqr.state import get_current_file, set_current_file
 
 class CLI:
     """Command Line Interface for XQR"""
@@ -20,7 +22,7 @@ class CLI:
     def __init__(self):
         self.editor = None
         self._load_state()
-        self.commands: Dict[str, Type[Any]] = {}
+        self.commands: Dict[str, Any] = {}
         self._load_commands()
     
     def _load_commands(self) -> None:
@@ -694,23 +696,34 @@ def parse_file_xpath(arg: str) -> Tuple[Path, str]:
     """
     if '//' in arg:
         file_part, xpath = arg.split('//', 1)
+        # Handle SVG namespace in XPath
+        if file_part.endswith(('.svg', '.svgx')):
+            # Handle SVG namespace for elements and attributes
+            xpath = xpath.replace("@id=", "@*[local-name()='id']=")
+            xpath = xpath.replace("text(", "*[local-name()='text'](")
+            # Handle SVG elements
+            xpath = xpath.replace("text", "*[local-name()='text']")
+            xpath = xpath.replace("tspan", "*[local-name()='tspan']")
+            xpath = xpath.replace("rect", "*[local-name()='rect']")
+            xpath = xpath.replace("circle", "*[local-name()='circle']")
+            xpath = xpath.replace("path", "*[local-name()='path']")
         return Path(file_part), f'//{xpath}'
     return Path(arg), '//*'
 
 def is_jquery_syntax(arg: str) -> bool:
-    """Check if the argument is a jQuery-style command.
-    
+    """Check if the argument is in jQuery syntax.
+
     Args:
-        arg: Command argument to check
+        arg: Input string to check
         
     Returns:
-        bool: True if the argument is a jQuery-style command
+        bool: True if the input is in jQuery syntax, False otherwise
     """
     return bool(re.match(r'^[^$]*\$\s*\(', arg))
 
 def handle_direct_operation(args: List[str]) -> bool:
     """Handle direct file/xpath operations.
-
+    
     Returns:
         bool: True if the operation was handled, False otherwise
     """

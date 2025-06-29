@@ -17,42 +17,90 @@ def prepare_xpath_for_svg(xpath: str) -> Tuple[str, Dict[str, str]]:
     Returns:
         Tuple of (modified_xpath, namespaces_dict)
     """
+    # Define SVG namespace
     namespaces = {'svg': 'http://www.w3.org/2000/svg'}
+    
+    # If the xpath already uses local-name(), use it as-is
+    if 'local-name()' in xpath:
+        return xpath, namespaces
     
     # If the xpath already has namespace prefixes, use them as-is
     if ':' in xpath and not xpath.lstrip().startswith(('//', '/', './/', './', '(', '@')):
         return xpath, namespaces
-        
-    # Otherwise, modify the xpath to include svg: prefix for elements
+    
+    # Special case: empty xpath
+    if not xpath:
+        return '//*', namespaces
+    
+    # Handle direct attribute access (e.g., @id)
+    if xpath.startswith('@'):
+        attr_name = xpath[1:]
+        return f'@*[local-name()="{attr_name}"]', namespaces
+    
+    # Handle simple element names (e.g., 'svg')
+    if not any(c in xpath for c in '[]/()@'):
+        return f'//*[local-name()="{xpath}"]', namespaces
+    
+    # For more complex XPath expressions, we'll build it part by part
     parts = []
     for part in xpath.split('/'):
         if not part or part == '.':
             parts.append(part)
             continue
-            
-        # Handle attributes and special cases
-        if part.startswith('@') or part in ('text()', '.', '..', 'node()'):
+        
+        # Handle attributes
+        if part.startswith('@'):
+            attr_name = part[1:]
+            parts.append(f'@*[local-name()="{attr_name}"]')
+            continue
+        
+        # Handle text nodes
+        if part == 'text()':
+            parts.append('text()')
+            continue
+        
+        # Handle parent and self references
+        if part in ('.', '..'):
             parts.append(part)
             continue
-            
-        # Handle predicates
-        if '[' in part:
-            elem, pred = part.split('[', 1)
-            pred = '[' + pred
-            if not elem.startswith(('@', '.', 'svg:')) and not any(
-                elem.startswith(f) for f in ('contains', 'starts-with', 'ends-with')
-            ):
-                elem = f'svg:{elem}'
-            parts.append(f"{elem}{pred}")
-            continue
-            
-        # Handle element names
-        if not any(part.startswith(p) for p in ('@', '.', 'svg:')):
-            part = f'svg:{part}'
-            
-        parts.append(part)
         
-    return '/'.join(parts), namespaces
+        # Handle predicates (e.g., [@id='value'] or [1])
+        if '[' in part and ']' in part:
+            elem_part, pred = part.split('[', 1)
+            pred = '[' + pred
+            
+            # Handle element name if it exists
+            if elem_part:
+                elem_part = f'*[local-name()="{elem_part}"]'
+            
+            # Special handling for simple attribute predicates
+            if '@' in pred and '=' in pred and ']' in pred:
+                try:
+                    # Extract the attribute name and value
+                    attr_part = pred.split('@', 1)[1].split(']', 1)[0]
+                    if '=' in attr_part:
+                        attr_name, attr_value = attr_part.split('=', 1)
+                        # Clean up quotes if present
+                        attr_name = attr_name.strip()
+                        attr_value = attr_value.strip().strip("\"'")
+                        # Rebuild the predicate with proper namespace handling
+                        pred = f"[@*[local-name()='{attr_name}']='{attr_value}']"
+                except (IndexError, ValueError):
+                    # If parsing fails, fall back to the original predicate
+                    pass
+            
+            parts.append(f"{elem_part}{pred}" if elem_part else pred)
+            continue
+        
+        # Handle simple element names
+        parts.append(f'*[local-name()="{part}"]')
+    
+    # Join parts and ensure it starts with // if not already a path
+    result = '/'.join(parts)
+    if not any(result.startswith(p) for p in ('//', './/', '/', './', '(', '@')):
+        result = f'//{result}'
+    
+    return result, namespaces
 
 
 def find_elements_by_xpath(tree: Any, xpath: str, file_type: str = 'xml') -> List[Any]:
